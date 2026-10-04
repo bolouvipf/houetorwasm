@@ -81,8 +81,8 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 | **Temps d'exécution** | canonique : natif **7,2** · wasmtime **13,9** · WASM-via-Node **24,5** · JS **34,3** · Python **1 593,6** ns ; ratios sur 5 campagnes | wasmtime ≈ **0,6-1,9× le natif** (médiane 1,5×) ; WASM-via-host **1,4-2,2× plus rapide que le JS** ; Python **65-238×** plus lent |
 | **Mémoire (RSS pic)** | natif **3,8** · wasmtime **14,4** · wazero **16,1** · Python **16,3** · Node **40,5** · host WASM **41,4** MB | ✅ un runtime WASM dédié coûte **2,5-3× moins que Node**, stable entre moteurs ; le plugin = **1 Mo** de mémoire linéaire |
 | **Taille du plugin** | plugin réactif **160 o** (vs 88 064 o natif, 991 o js, 135 641 o commande WASI avec std Rust) | ✅ un *plugin* minimal = **160 o** ; le poids vient du runtime/std, pas du plugin |
-| **Isolation** | Exp 003/005 : imports refusés (`deny-by-default`), 2 barrières indépendantes | ✅ |
-| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) + **capabilities WASI** (Exp 011 : grant → `ok`, évasion `../` → refusée, aucun accord → refus, **9/9 sur 3 moteurs**) | ✅ (applicatif + système) |
+| **Isolation** | Exp 003/005 : imports refusés (`deny-by-default`), 2 barrières indépendantes ; Exp 011-012 : lecture/écriture sandboxées (évasion `../` refusée, `evil.txt` jamais créé — 3 moteurs) | ✅ |
+| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) + **capabilities WASI** (Exp 011 : grant → `ok`, évasion → refus, aucun accord → refus, 9/9 sur 3 moteurs ; Exp 012 : écriture rw ok / hors-preopen refusée / ro=`:ro` bloqué chez wazero) | ✅ (applicatif + système, lecture+écriture) |
 | **Temps d'installation / mise à jour** | Exp 008 : install **18,5 ms** fs net, update (v1→v2 + archivage) **24,7 ms**, remove **14,2 ms** (wall ≈ 90-100 ms avec spawn Node 73 ms) | ✅ local ≈ dizaines de ms |
 | **Retrait / versions / install** | Exp 003 (fonctionnel : `.history/`, refus doublon) + Exp 008 (chronométré) | ✅ |
 | **Portabilité** | même fichier exécuté sur **2 OS** (Windows, Linux/WSL2) par **7 combinaisons** exécuteur×OS — **3 moteurs** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat `1134903170` (Exp 007+010, `portability.json` + `portability_os.json`) | ✅ **multi-OS démontrée** (macOS/navigateur = suite) |
@@ -140,9 +140,10 @@ node prototype\bench\portability.mjs
 #     curl -sL -o wazero.tar.gz https://github.com/tetratelabs/wazero/releases/download/v1.12.0/wazero_1.12.0_linux_amd64.tar.gz && tar xzf wazero.tar.gz && rm wazero.tar.gz && chmod +x wazero)
 powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\portability_os.ps1
 
-# 7. Capabilities fichier WASI (Exp 011) : grant/escape/nogrant × 3 runtimes → wasi_caps.json
-#    (module : cargo build --release --target wasm32-wasip1 --manifest-path prototype\samples\filecap\Cargo.toml)
+# 7. Capabilities fichier WASI (Exp 011-012) : lecture+écriture, grant/escape/ro/nogrant → wasi_caps.json / wasi_write.json
+#    (modules : cargo build --release --target wasm32-wasip1 --manifest-path prototype\samples\filecap\Cargo.toml)
 node prototype\bench\wasi_caps.mjs
+node prototype\bench\wasi_write.mjs
 ```
 
 Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K`. wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/`.

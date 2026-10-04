@@ -339,7 +339,7 @@ checks: dup_refused=true update_ok=true remove_ok=true probe_gone=true hello_int
 ✅ wazero 1.12 (moteur Go) · escape → err (Operation not permitted (os error 63))
 ✅ wazero 1.12 (moteur Go) · nogrant → err (No such file or directory (os error 44))
 ✅ node:wasi (V8) · grant → ok
-✅ node:wasi (V8) · escape → err (No such file or directory (os error 44))
+✅ node:wasi (V8) · escape → err (Capabilities insufficient (os error 76))
 ✅ node:wasi (V8) · nogrant → err (No such file or directory (os error 44))
 ```
 
@@ -347,14 +347,52 @@ Contenu lu sous grant : `len=16, byte_sum=1157` — **identique sur les 3 runtim
 
 **Résultat :** les 3 moteurs implémentent la même sémantique de capabilities :
 1. **Rien accordé → rien lisible** (deny-by-default au niveau runtime, indépendant de notre hôte) ;
-2. **Accord = chemin exact** : la tentative d'évasion `data/../secret.txt` est **refusée** (`Operation not permitted`) par Cranelift **et** Go **et** V8 ;
+2. **Accord = chemin exact** : la tentative d'évasion `data/../secret.txt` est **refusée** (`Operation not permitted` chez Cranelift et Go, `Capabilities insufficient` chez V8) ;
 3. **Semantique portable** : mêmes statuts `ok/err/err` sur 3 moteurs → le modèle « l'hôte accorde des dossiers, le plugin ne voit que cela » est fiable quel que soit le runtime.
 *Note de terrain* : wazero documente lui-même que des mounts de volume entiers (ex. `-mount=/`) permettent la fuite via `../../` → **c'est la granularité du preopen qui protège**, pas le moteur (argument pour des allow-lists fines).
 
-**Bug corrigé en cours d'Exp :** le pilote ne fusionnait pas `rt.env` (`WASI_PREOPENS`) → faux négatif node:wasi en grant ; corrigé, 9/9.
+**2 bugs de méthode corrigés pendant l'Exp 011 :**
+1. le pilote ne fusionnait pas `rt.env` (`WASI_PREOPENS`) → faux négatif node:wasi en grant ;
+2. **le scénario escape de node:wasi ne recevait pas son preopen** → son `err` prouvait l'absence d'accès, pas le blocage de la traversée `../`. Corrigé (preopen présent sur grant **et** escape) : node:wasi refuse désormais pour de vrai (`Capabilities insufficient`, os error 76). *Leçon : un test de sécurité doit n'échouer que pour la bonne raison.*
 
 **Suite :** capacités réseau (WASI sockets), écriture (ro/rw), WIT pour politiques fines côté plugin.
 
 ---
 
-## Exp 012 — *(à venir)*
+## Exp 012 — Écriture sous capabilities WASI + preopen read-only (2026-10-04)
+
+**Contexte :** Exp 011 a prouvé la *lecture* sandboxée ; restait l'écriture (le vrai danger : un plugin qui modifie l'hôte) et les droits **ro/rw** (§7 permissions).
+
+**Action :** bin `filewrite` (même crate `filecap`, args `<cible> <contenu>`, relecture de vérification) ; script `prototype/bench/wasi_write.mjs` : 4 scénarios × 3 runtimes + **contrôles côté hôte** (contenu réel de `capdata/out.txt`, non-existence de `evil.txt`).
+
+**Preuves brutes** (`wasi_write.json`, `all_checks_pass: true`) :
+
+```text
+✅ wasmtime 49 (Cranelift) · grant-write → ok
+⚪ wasmtime 49 (Cranelift) · ro-write → n/a (pas de preopen ro disponible)
+✅ wasmtime 49 (Cranelift) · escape-write → err (Operation not permitted (os error 63))
+✅ wasmtime 49 (Cranelift) · nogrant-write → err (No such file or directory (os error 44))
+✅ wazero 1.12 (moteur Go) · grant-write → ok
+✅ wazero 1.12 (moteur Go) · ro-write → err (Function not implemented (os error 52))
+✅ wazero 1.12 (moteur Go) · escape-write → err (Operation not permitted (os error 63))
+✅ wazero 1.12 (moteur Go) · nogrant-write → err (No such file or directory (os error 44))
+✅ node:wasi (V8) · grant-write → ok
+⚪ node:wasi (V8) · ro-write → n/a (pas de preopen ro disponible)
+✅ node:wasi (V8) · escape-write → err (Capabilities insufficient (os error 76))
+✅ node:wasi (V8) · nogrant-write → err (No such file or directory (os error 44))
+✅ hôte : capdata/out.txt = "ECRITURE-WASM"
+✅ hôte : evil.txt absent = true
+```
+
+**Résultat :**
+- **Écriture : accordée dans le preopen rw** (3/3, `verify_len=13` + fichier relu par l'hôte), **refusée hors preopen** (evil.txt **jamais créé** — preuve hôte, pas seulement message guest), **refusée sans accord** ;
+- **Preopen read-only** : supporté par wazero (`-mount …:ro` → `Function not implemented`) mais **absent des CLI wasmtime 49 et node:wasi** (preuves : `wasmtime run --help` / `-S help` sans `rodir`) → la capacité ro existe dans le modèle mais son exposant dépend du runtime ;
+- globalement : **21 checks conformes + 2 n/a documentés** sur lecture (Exp 011) + écriture.
+
+**Limite honnête :** pas encore de test réseau (sockets WASI = WASI 0.3/p2 en devenir).
+
+**Suite :** réseau, WIT, installation depuis un registre distant (distribution).
+
+---
+
+## Exp 013 — *(à venir)*

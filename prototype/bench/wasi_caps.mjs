@@ -94,7 +94,8 @@ for (const rt of runtimes) {
       const [cmd, args] = rt.argv(scenario);
       const env = { ...process.env };
       delete env.WASI_PREOPENS;
-      if (scenario === 'grant') Object.assign(env, rt.env ?? {});
+      // preopen présent sur grant ET escape (le test de traversée n'a de sens que là)
+      if (scenario !== 'nogrant') Object.assign(env, rt.env ?? {});
       const r = spawnSync(cmd, args, { encoding: 'utf8', windowsHide: true, env, cwd: HERE });
       const line = (r.stdout ?? '').split(/\r?\n/).filter((l) => l.trim().startsWith('{')).pop();
       if (!line) {

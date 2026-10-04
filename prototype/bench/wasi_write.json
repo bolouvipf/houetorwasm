@@ -1,0 +1,215 @@
+{
+  "date": "2026-10-04T11:24:22.976Z",
+  "machine": "win32 x64 v24.15.0",
+  "module": "filewrite.wasm (wasm32-wasip1)",
+  "targets": {
+    "grant-write": "data/out.txt",
+    "ro-write": "data/out.txt",
+    "escape-write": "data/../evil.txt",
+    "nogrant-write": "data/out.txt"
+  },
+  "checks": [
+    {
+      "id": "wasmtime/grant-write",
+      "pass": true,
+      "detail": "got=ok expect=ok"
+    },
+    {
+      "id": "wasmtime/escape-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "wasmtime/nogrant-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "wazero/grant-write",
+      "pass": true,
+      "detail": "got=ok expect=ok"
+    },
+    {
+      "id": "wazero/ro-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "wazero/escape-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "wazero/nogrant-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "node-wasi/grant-write",
+      "pass": true,
+      "detail": "got=ok expect=ok"
+    },
+    {
+      "id": "node-wasi/escape-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "node-wasi/nogrant-write",
+      "pass": true,
+      "detail": "got=err expect=err"
+    },
+    {
+      "id": "host/out.txt",
+      "pass": true,
+      "detail": "contenu=ECRITURE-WASM"
+    },
+    {
+      "id": "host/evil.txt absent",
+      "pass": true,
+      "detail": "jamais créé"
+    }
+  ],
+  "results": [
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "grant-write",
+      "status": "ok",
+      "expect": "ok",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "wrote": 13,
+      "verify_len": 13,
+      "elapsed_us": 2409.4,
+      "runs": 3
+    },
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "ro-write",
+      "status": "n/a",
+      "expect": "err",
+      "note": "CLI/impl sans preopen read-only"
+    },
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "escape-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/../evil.txt",
+      "error": "Operation not permitted (os error 63)",
+      "elapsed_us": 198,
+      "runs": 3
+    },
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "nogrant-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 98.1,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "grant-write",
+      "status": "ok",
+      "expect": "ok",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "wrote": 13,
+      "verify_len": 13,
+      "elapsed_us": 2427.6,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "ro-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "error": "Function not implemented (os error 52)",
+      "elapsed_us": 340.1,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "escape-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/../evil.txt",
+      "error": "Operation not permitted (os error 63)",
+      "elapsed_us": 145.3,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "nogrant-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 10.9,
+      "runs": 3
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "grant-write",
+      "status": "ok",
+      "expect": "ok",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "wrote": 13,
+      "verify_len": 13,
+      "elapsed_us": 2765.3,
+      "runs": 3
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "ro-write",
+      "status": "n/a",
+      "expect": "err",
+      "note": "CLI/impl sans preopen read-only"
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "escape-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/../evil.txt",
+      "error": "Capabilities insufficient (os error 76)",
+      "elapsed_us": 701.9,
+      "runs": 3
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "nogrant-write",
+      "status": "err",
+      "expect": "err",
+      "impl": "filewrite",
+      "target": "data/out.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 586.9,
+      "runs": 3
+    }
+  ],
+  "all_checks_pass": true
+}

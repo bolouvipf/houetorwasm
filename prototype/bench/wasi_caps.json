@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-04T11:15:29.230Z",
+  "date": "2026-10-04T11:24:20.334Z",
   "machine": "win32 x64 v24.15.0",
   "module": "filecap.wasm (wasm32-wasip1)",
   "targets": {
@@ -74,7 +74,7 @@
       "target": "data/input.txt",
       "len": 16,
       "byte_sum": 1157,
-      "elapsed_us": 872.9,
+      "elapsed_us": 485,
       "runs": 3
     },
     {
@@ -86,7 +86,7 @@
       "impl": "filecap",
       "target": "data/../secret.txt",
       "error": "Operation not permitted (os error 63)",
-      "elapsed_us": 239.3,
+      "elapsed_us": 175.7,
       "runs": 3
     },
     {
@@ -98,7 +98,7 @@
       "impl": "filecap",
       "target": "data/input.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 87,
+      "elapsed_us": 69.2,
       "runs": 3
     },
     {
@@ -111,7 +111,7 @@
       "target": "data/input.txt",
       "len": 16,
       "byte_sum": 1157,
-      "elapsed_us": 384.3,
+      "elapsed_us": 436.6,
       "runs": 3
     },
     {
@@ -123,7 +123,7 @@
       "impl": "filecap",
       "target": "data/../secret.txt",
       "error": "Operation not permitted (os error 63)",
-      "elapsed_us": 162.5,
+      "elapsed_us": 155.9,
       "runs": 3
     },
     {
@@ -135,7 +135,7 @@
       "impl": "filecap",
       "target": "data/input.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 11,
+      "elapsed_us": 18.7,
       "runs": 3
     },
     {
@@ -148,7 +148,7 @@
       "target": "data/input.txt",
       "len": 16,
       "byte_sum": 1157,
-      "elapsed_us": 839.1,
+      "elapsed_us": 1015.7,
       "runs": 3
     },
     {
@@ -159,8 +159,8 @@
       "expect": "err",
       "impl": "filecap",
       "target": "data/../secret.txt",
-      "error": "No such file or directory (os error 44)",
-      "elapsed_us": 641.7,
+      "error": "Capabilities insufficient (os error 76)",
+      "elapsed_us": 765.3,
       "runs": 3
     },
     {
@@ -172,7 +172,7 @@
       "impl": "filecap",
       "target": "data/input.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 709.1,
+      "elapsed_us": 719.1,
       "runs": 3
     }
   ],

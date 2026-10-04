@@ -12,7 +12,7 @@
    - **8/8 étapes du §4** (Exp 003) ; **comparatif §8 à 5 jambes** (Exp 004+006+009) : campagne canonique n=9 → natif **7,2** · wasmtime **13,9** · WASM-Node **24,5** · JS **34,3** · Python **1 594** ns/appel, **fourchettes sur 5 campagnes** (ratios stables : wasmtime ≈ natif ×1,5 [0,6-1,9], host 1,4-2,2× JS, Python 65-238×) ; RSS pic : wasmtime **14,4 Mo** / wazero **16,1 Mo** vs Node **40,5 Mo** ; plugin **160 o**, cold load **1-2 ms**.
    - **Portabilité ✅ multi-OS** (Exp 007+010) : **même binaire → 2 OS (Windows + Linux/WSL2), 7 combinaisons exécuteur×OS, 3 moteurs indépendants** (Cranelift p1+p2, Go/wazero, V8/node:wasi), résultat identique `1134903170` (`portability.json` + `portability_os.json`).
    - **Cycle de vie chronométré ✅** (Exp 008) : install **18,5 ms**, update **24,7 ms**, remove **14,2 ms** fs net (baseline spawn Node 73,3 ms ; doublon refusé, `hello` intact) → `lifecycle.json`.
-   - **Capabilities fichier WASI ✅** (Exp 011) : grant → `ok`, évasion `data/../secret.txt` → refusée, aucun accord → refus — **9/9 sur wasmtime/wazero/node:wasi** (`wasi_caps.json`, module `prototype/samples/filecap`).
+   - **Capabilities fichier WASI ✅** (Exp 011+012) : lecture ET écriture — accord → `ok`, évasion `data/../` → refusée (3 moteurs : os 63/63/76), aucun accord → refus, preopen `ro` → écriture bloquée (wazero), `evil.txt` jamais créé ; **21 checks + 2 n/a** (`wasi_caps.json` + `wasi_write.json`, modules `prototype/samples/filecap`).
 4. **Phase 4 — Pont MCP** → `prototype/mcp/bridge.mjs` + `phase4_mcp_bridge.md`.
    - **8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** ; défense en profondeur (outil exposé, appel refusé par sandbox).
 5. **Conclusion §11 écrite** → `conclusion.md` : réponses aux 8 questions + verdict hypothèse §9 (**confirmée côté technique, nuancée côté écosystème**).
@@ -22,7 +22,7 @@
 
 ## À faire ⏳ (suite recommandée, par ordre)
 
-1. **WASI réseau + écriture** : sockets (WASI 0.3) et droits ro/rw sur les preopens ; **WIT** (chaînes/structs) pour enrichir le bridge MCP (types d'outils riches).
+1. **WASI réseau** : sockets (WASI 0.3) ; **WIT** (chaînes/structs) pour enrichir le bridge MCP (types d'outils riches).
 2. Client MCP externe « inspector » (filtre d'outils par policy) — le test actuel *est* déjà un client JSON-RPC externe (spawn stdio) ; reste l'interconnexion avec un vrai client tiers (Claude Desktop/inspector).
 3. Workload non compute-bound (strings/mémoire) + charge de fichiers WASI réelle ; portabilité macOS/navigateur.
 4. Chargement distant (réseau/registre) ; instruments de dépendances (WIT/composants).
@@ -30,10 +30,10 @@
 
 ## Point de reprise exact
 
-> Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅** (Exp 011). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
+> Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
 > Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
-> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 011**) → `conclusion.md`.
-> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` (tout vert).
+> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 012**) → `conclusion.md`.
+> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` (tout vert).
 
 ## Décisions de session
 

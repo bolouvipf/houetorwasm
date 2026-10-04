@@ -7,3 +7,7 @@ description = "Exp 011 : capabilities fichier WASI (deny-by-default, allow-list 
 [[bin]]
 name = "filecap"
 path = "src/main.rs"
+
+[[bin]]
+name = "filewrite"
+path = "src/bin/filewrite.rs"
