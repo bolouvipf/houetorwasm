@@ -1,11 +1,11 @@
 # Phase 3 — Mesures comparatives (étude §8)
 
-> Date des mesures : **2026-10-04 06:45 UTC** · Machine : `win32 x64`, Node **v24.15.0**, Python **3.14**, clang **22.1.8 (LLVM-MinGW UCRT)**, plugin `hello@1.0.1` (Rust → `wasm32-unknown-unknown`).
-> Règle du lab : **preuves brutes d'abord** (`prototype/bench/results.json`), interprétation ensuite. Script reproductible : `prototype/bench/run_bench.mjs`.
+> Date des mesures : **2026-10-04** (run final `06:58:40Z`) · Machine : `win32 x64`, Node **v24.15.0**, Python **3.14**, clang **22.1.8 (LLVM-MinGW UCRT)**, **wasmtime 49.0.2**, plugin `hello@1.0.1` (Rust → `wasm32-unknown-unknown`), commande `fib-wasi` (Rust → `wasm32-wasip2`).
+> Règle du lab : **preuves brutes d'abord** (`prototype/bench/results.json`, `prototype/bench/peak_rss.json`), interprétation ensuite. Scripts : `run_bench.mjs` + `peak_rss.ps1`.
 
 ## 1. Méthodologie
 
-Une **même fonctionnalité**, implémentée **4 fois** (étude §8) :
+Une **même fonctionnalité**, implémentée **5 fois** (étude §8 élargie à un runtime WASM dédié) :
 
 ```
 fib(45) = 1134903170   (même résultat, vérifié dans chaque sortie JSON)
@@ -16,77 +16,92 @@ fib(45) = 1134903170   (même résultat, vérifié dans chaque sortie JSON)
 | 1. Natif | `fib.c` → `fib_native.exe` | clang MinGW `-O2`, exécution directe Windows |
 | 2. Python | `fib.py` | CPython 3.14 |
 | 3. JavaScript | `fib.js` | Node 24 (V8) |
-| 4. WASM (plugin) | `hello` v1.0.1 | compilé Rust `--release`, chargé par le **HOUETOR Plugin Host** (`host.mjs bench`) |
+| 4. WASM plugin (via host) | `hello` v1.0.1 | Rust `wasm32-unknown-unknown`, chargé par le **HOUETOR Plugin Host** (`host.mjs bench`) |
+| 5. WASM commande (runtime dédié) | `fib_wasi/fib-wasi.wasm` | Rust `wasm32-wasip2`, exécuté par **wasmtime 49** (sans Node) |
 
-**Protocole** : chaque variante est exécutée **5 fois en processus neuf** (spawn complet) ; on retient la **médiane**. Chaque exécution mesure elle-même : `first_call_us` (premier appel), `compute_ms` (boucle de K appels), `per_call_ns` (normalisé par appel), `maxrss_kb` (pic de mémoire résidente). Le orchestrator mesure `wall_ms` = **temps end-to-end** (création de processus + initialisation + calcul).
+**Protocole** : chaque variante = **5 exécutions en processus neuf** (spawn complet), on retient la **médiane**. Mesures internes par enfant (`first_call_us`, `compute_ms`, `per_call_ns`) + `wall_ms` mesuré par l'orchestrateur (création processus + init + calcul). **RSS pic** : WASI ne fournit pas de `maxrss` (`maxrss_kb: 0`) → mesure **externe** obligatoire via `peak_rss.ps1` (polling `PeakWorkingSet64` pendant l'exécution, médiane de 3).
 
-**K par jambe** (visé ≈ 0,2-0,7 s de calcul) : natif 10 M · Python 100 k · JS 1 M · WASM 10 M. Seul `per_call_ns` est comparable entre jambes ; `compute_ms` l'est à l'intérieur d'une jambe.
+**K par jambe** (cible ≈ 0,2-0,7 s) : natif 10 M · Python 100 k · JS 1 M · WASM-host 10 M · wasmtime 10 M. **Seule `per_call_ns` est inter-jambes** (normalisée par appel).
 
-**Égalité des conditions** : même algorithme (boucle itérative), même `n`, `sink`/accumulateur obligatoire pour empêcher l'élimination du code mort (bug réel, voir Exp 004), aucune mise en cache entre runs (chaque run = nouveau processus).
+**Égalité des conditions** : même algorithme (boucle itérative), même `n`, accumulateur `sink` obligatoire (bug dead-code corrigé, Exp 004), nouveau processus à chaque run (aucun cache partagé).
 
-## 2. Résultats bruts (médianes, sortie de `node prototype\bench\run_bench.mjs`)
+## 2. Résultats bruts — performance (`node prototype\bench\run_bench.mjs`, médianes)
 
-| Implémentation | artefact (o) | wall end-to-end (ms) | 1er appel (µs) | par appel (ns) | RSS max (KB) | K |
-|---|---:|---:|---:|---:|---:|---:|
-| **Natif (C, MinGW)** | 88 064 | **209,37** | **0,2** | **19,2** | **3 660** | 10 M |
-| **Python 3.14** | 1 735 | 802,05 | 11,1 | 5 718 | 16 232 | 100 k |
-| **JavaScript (Node 24)** | 991 | 284,41 | 92,8 | 112,3 | 40 980 | 1 M |
-| **WASM plugin (HOUETOR host)** | **160** | 894,25 | 1,9 | 70,7 | 41 060 | 10 M |
+| Implémentation | artefact (o) | wall end-to-end (ms) | 1er appel (µs) | par appel (ns) | K |
+|---|---:|---:|---:|---:|---:|
+| **Natif (C, MinGW)** | 88 064 | **193,75** | **0,2** | **17,8** | 10 M |
+| **WASM commande (wasmtime 49)** | 135 135 | 332,86 | 9,5 | **27,2** | 10 M |
+| **WASM plugin (HOUETOR / Node)** | **160** | 760,69 | **2,0** | 59,9 | 10 M |
+| **JavaScript (Node 24)** | 991 | 199,86 | 63,5 | 80,5 | 1 M |
+| **Python 3.14** | 1 735 | 618,30 | 10,9 | 4 127,6 | 100 k |
 
-Relevé WASM détaillé (preuve brute, `run hello/bench`) :
+- WASM plugin (host) : `cold_load_ms: 1,971` (compile + instantiate, preuve dans `results.json`).
+- `wall_ms` inclut le spawn du runtime : Node ≈ 160-200 ms, Python ≈ 40 ms, natif ≈ 15 ms, wasmtime ≈ 60 ms → d'où le classement « wall » contre-intuitif (JS plus rapide que WASM-Node **uniquement** parce que son calcul de 1 M d'itérations est plus court).
 
-```json
-{"plugin":"hello@1.0.1","call":"fibonacci","args":[45],"result":1134903170,
- "cold_load_ms":4.207,"compile_ms":1.551,"instantiate_ms":0.244,
- "compute_ms":706.71,"per_call_ns":70.7,"wasm_bytes":160,"memory_bytes":1048576}
+## 3. Résultats bruts — RSS pic (`prototype/bench/peak_rss.ps1`, médiane de 3)
+
+```text
+Natif (C)                    :  4 196 KB (samples: 4192, 3792, 4196)
+Python 3.14                  : 16 268 KB (samples: 16232, 16268, 16268)
+JavaScript (Node)            : 40 328 KB (samples: 40032, 40020, 40328)
+WASM plugin (host Node)      : 41 424 KB (samples: 41424, 41360, 41332)
+WASM commande (wasmtime)     : 13 736 KB (samples: 13612, 13704, 13736)
 ```
 
-Fichier complet : **`prototype/bench/results.json`** (avec date, machine, statut de chaque jambe).
+(Chaque run a exécuté le workload complet — aucun message d'erreur en sortie, vérifié.)
 
-## 3. Lecture par critère (étude §7)
+## 4. Lecture par critère (étude §7)
 
 | Critère | Preuve mesurée | Verdict |
 |---|---|---|
-| **Temps de chargement** | WASM : compile+instantiate **4,2 ms** à froid ; end-to-end WASM **894 ms** dont ~190 ms = spawn Node ; natif : spawn seul (~18 ms) | ✅ le *chargement du plugin WASM* est négligeable face à l'init du runtime hôte |
-| **Temps d'exécution** | par appel : natif **19,2 ns** · WASM **70,7 ns** · JS **112,3 ns** · Python **5 718 ns** | WASM = **3,7× plus lent que le natif**, **1,6× plus rapide que le JS pur**, **81× plus rapide que Python** |
-| **Mémoire (RSS pic)** | natif 3,6 MB · Python 16 MB · Node/JS 41 MB · hôte WASM 41 MB | ⚠️ le plugin WASM lui-même = **1 Mo** ; les 41 MB sont le coût **du runtime hôte (Node)**, pas du plugin |
-| **Taille du plugin** | **160 o** (WASM) vs 991 o (js) vs 1 735 o (py) vs 88 064 o (exe) | ✅ **550× plus léger que l'exécutable natif** |
-| **Isolation** | Exp 003 : imports refusés (`deny-by-default`), permissions non accordées → refus | ✅ démontré par sortie brute (Exp 003) |
-| **Contrôle des permissions** | manifeste `permissions` ∩ allow-list hôte (`HOST_ALLOWED = []`) | ✅ |
+| **Temps de chargement** | WASM plugin : compile+instantiate **1,97 ms** à froid ; spawn wasmtime ≈ 60 ms ; spawn natif ≈ 15 ms | ✅ le *chargement du plugin* est négligeable face à l'init du runtime |
+| **Temps d'exécution** | par appel : natif **17,8** · wasmtime **27,2** · WASM-via-Node **59,9** · JS **80,5** · Python **4 127,6** ns | WASM = **1,5× le natif** (wasmtime) à **3,4×** (via Node) ; **1,3-1,7× plus rapide que le JS pur** ; **69-152× Python** |
+| **Mémoire (RSS pic)** | natif **4,2** · wasmtime **13,7** · Python **16,3** · Node **40,3** · host WASM **41,4** MB | ✅ un runtime WASM dédié coûte **3× moins que Node** ; le plugin lui-même = **1 Mo** de mémoire linéaire |
+| **Taille du plugin** | plugin réactif **160 o** (vs 88 064 o natif, 991 o js, 135 135 o commande WASI avec std Rust) | ✅ un *plugin* minimal = **160 o** ; le poids vient du runtime/std, pas du plugin |
+| **Isolation** | Exp 003/005 : imports refusés (`deny-by-default`), 2 barrières indépendantes | ✅ |
+| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) | ✅ |
 | **Retrait / versions / install** | Exp 003 (`.history/`, refus doublon) | ✅ |
-| **Portabilité** | même `hello.wasm` chargé par Node (V8) ici — pas encore rejoué sous wasmtime/Firefox | 🟡 à démontrer (suite) |
-| **Complexité d'intégration** | hôte MVP = **~250 lignes JS**, zéro dépendance ; accès WASM = 1 API standard (`WebAssembly`) | ✅ faible pour un hôte minimal |
-| **Temps d'installation / mise à jour** | non chronométré (fs local, ms) | ⬜ à instrumenter |
-| **Gestion des dépendances** | MVP : aucun import hôte sauf permissions explicites | ⬜ WIT/composants = Phase 3 suite |
+| **Portabilité** | **même charge** exécutée par **2 runtimes WASM différents** (V8/Node ET wasmtime/Cranelift) avec le même résultat `1134903170` | 🟡→✅ partielle (2 runtimes OS Windows ; un 3ᵉ OS/navigateur = suite) |
+| **Complexité d'intégration** | hôte ≈ 250 lignes JS, 0 dépendance ; bridge MCP ≈ 150 lignes, 0 dépendance | ✅ faible |
+| **Temps d'installation / mise à jour** | non chronométré (fs local) | ⬜ à instrumenter |
+| **Gestion des dépendances** | imports refusés sauf permissions explicites ; WIT/composants = suite | 🟡 |
 
-## 4. Réponse à l'étude §8 (« est-ce meilleur qu'un plugin natif/Python/JS ? »)
+## 5. Réponse à l'étude §8 (« meilleur qu'un plugin natif/Python/JS ? »)
 
-**Le WASM n'est pas « plus rapide que le natif »** — il y a un **facteur 3,7** — mais il tient un **triangle de compromis qu'aucune des 3 autres jambes n'atteint** :
+**Avec un runtime WASM dédié, l'écart au natif tombe à 1,5×** (27,2 vs 17,8 ns) — bien loin des 3,4× mesurés quand le même plugin passe par l'hôte Node (surcoût : frontière JS↔WASM + boucle hôte). Le WASM n'est jamais vainqueur brut, mais c'est le seul format qui cumule :
 
-1. **vs Natif** : le natif gagne tout (~4× exécution, ~18 ms de spawn) mais coûte **88 KB par plugin, une plateforme par cible** (x64/arm64, .exe vs .so) et **aucune isolation standard** (un plugin natif = code machine qui fait ce qu'il veut).
-2. **vs Python/JS** : WASM est **plus rapide à l'exécution que le JS pur (1,6×)** et **81× que Python**, avec un artefact **160 o** et une **sandbox par construction** — alors que JS/Python exécutent avec les droits du processus hôte.
-3. **Le vrai coût WASM est le runtime hôte** : 41 MB de RSS et ~190 ms de spawn Node sont payés *une fois pour tous les plugins*. Pour un hôte avec N plugins, le coût marginal par plugin = **160 o + 4 ms de compile**.
+1. **vs Natif** : 1,5× de vitesse **en échange de** portabilité (même binaire), sandbox par construction, artefact **160 o** vs 88 Ko, et **aucune plateforme par cible**.
+2. **vs JS** : WASM est **1,3× plus rapide** à l'exécution (59,9 vs 80,5 ns) **avec une sandbox** ; le JS a la même vitesse de spawn mais aucune isolation par défaut.
+3. **vs Python** : **69-152×** plus rapide — Python sert ici de témoin « scripting embarqué » : acceptable en startup, hors compétition en calcul.
+4. **Le coût réel est le runtime** : 13,7 MB (wasmtime) à 41 MB (Node) — **payé une fois pour N plugins**, coût marginal par plugin = 160 o + 2 ms de compile.
 
-**Conclusion nuancée (à retenir dans le mémoire)** : pour un *système universel de plugins*, WASM est le premier format qui coche simultanément exécution proche du natif (70 ns), distribution minuscule (160 o), isolation éprouvée et appel standardisé ; le natif reste le vainqueur brut si l'on accepte de perdre portabilité + isolation.
+**Conclusion §8** : pour un système universel de plugins, WASM (runtime dédié) = exécution à 1,5× du natif + distribution 160 o + isolation prouvée + appel standardisé — le meilleur *triangle* compromis, pas le vainqueur sur chaque axe. Le natif gagne si l'on accepte de perdre portabilité + isolation ; le JS gagne en intégration web mais pas en sécurité.
 
-## 5. Limites expérimentales (honnêteté scientifique)
+## 6. Limites expérimentales (honnêteté scientifique)
 
-- **K différent par jambe** : seule la colonne `per_call_ns` est inter-jambes (normalisée ; `compute_ms` non comparable directement).
-- **Représentations numériques différentes** : C/WASM en `i64/i32`, JS en `double` (fib(45) < 2^53 → exact), Python en entier arbitraire. Même résultat vérifié, régime de nombres équivalent mais pas identique.
-- **Une seule machine, une seule charge** : fib est *compute-bound* ; un workload mémoire/strings donnerait d'autres ratios. Pas de mesure multi-thread.
-- **La jambe WASM passe par Node** (hôte MVP JS) : les 41 MB RSS sont ceux de Node. Une mesure via **wasmtime CLI** isolerait le coût réel du runtime WASM → **suite prévue**.
-- **`first_call_us` JS (92,8 µs)** inclut probablement la première compilation JIT de `fib` — cold-start JS mal pénalisé, à creuser avec des runs plus longs.
+- **K différent par jambe** : seule `per_call_ns` est inter-jambes ; `compute_ms` n'est comparable qu'à l'intérieur d'une jambe.
+- **Représentations numériques** : C/WASM `i64/i32`, JS `double` (fib(45) < 2^53 → exact), Python entier arbitraire ; même résultat vérifié.
+- **Une machine, une charge** : fib est *compute-bound* ; workload mémoire/données = autres ratios. Pas de mesure multi-thread (WASI 0.3 n'a pas encore threads — H §Phase 2).
+- **`wall_ms` = spawn inclus** : comparer les « wall » entre runtimes de startup différent est trompeur → raison d'exister de `compute_ms`.
+- **`first_call_us` JS (63,5 µs)** inclut la 1ʳᵉ compilation JIT ; wasmtime (9,5 µs) inclut l'init WASI.
+- **Artefacts non comparables en taille** : `fib-wasi.wasm` (135 Ko) embarque std Rust + WASI ; le **plugin 160 o** est le vrai réflexe « plugin ».
+- **Variabilité inter-runs** : deux campagnes (06:45 et 06:58) donnent ±20 % sur `per_call_ns` (bruit OS/JIT) — ordres de grandeur stables, ratios stables.
 
-## 6. Reproductibilité
+## 7. Reproductibilité
 
 ```powershell
-# 1. Compiler la jambe native (LLVM-MinGW, winget installé le 2026-10-04)
+# 1. Jambe native (LLVM-MinGW, winget, 2026-10-04)
 $bin = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\MartinStorsjo.LLVM-MinGW.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\llvm-mingw-20260616-ucrt-x86_64\bin"
 & "$bin\clang.exe" prototype\bench\fib.c -O2 -o prototype\bench\fib_native.exe -lpsapi
 
-# 2. Lancer le comparatif (médiane de 5 spawns par jambe)
+# 2. Jambe wasmtime (commande WASI)
+& "$env:USERPROFILE\.cargo\bin\cargo.exe" build --release --target wasm32-wasip2 --manifest-path prototype\bench\fib_wasi\Cargo.toml
+
+# 3. Comparatif (5 jambes, médiane de 5 spawns) → results.json
 node prototype\bench\run_bench.mjs
-# → table markdown + prototype\bench\results.json
+
+# 4. RSS pic (médiane de 3, polling externe) → peak_rss.json
+powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\peak_rss.ps1
 ```
 
-Env variables : `BENCH_RUNS` (nb de runs), `BENCH_N` (n de fib), `BENCH_K` (itérations, lu par chaque implémentation).
+Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K`. wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/`.

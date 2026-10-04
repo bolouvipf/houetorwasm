@@ -1,0 +1,63 @@
+﻿{
+    "date":  "2026-10-04T07:02:29.0782901Z",
+    "results":  [
+                    {
+                        "id":  "natif-c",
+                        "label":  "Natif (C)",
+                        "status":  "ok",
+                        "peak_kb":  4196,
+                        "samples_kb":  [
+                                           4192,
+                                           3792,
+                                           4196
+                                       ]
+                    },
+                    {
+                        "id":  "python",
+                        "label":  "Python 3.14",
+                        "status":  "ok",
+                        "peak_kb":  16268,
+                        "samples_kb":  [
+                                           16232,
+                                           16268,
+                                           16268
+                                       ]
+                    },
+                    {
+                        "id":  "javascript-node",
+                        "label":  "JavaScript (Node)",
+                        "status":  "ok",
+                        "peak_kb":  40328,
+                        "samples_kb":  [
+                                           40032,
+                                           40020,
+                                           40328
+                                       ]
+                    },
+                    {
+                        "id":  "wasm-houetor",
+                        "label":  "WASM plugin (host Node)",
+                        "status":  "ok",
+                        "peak_kb":  41424,
+                        "samples_kb":  [
+                                           41424,
+                                           41360,
+                                           41332
+                                       ]
+                    },
+                    {
+                        "id":  "wasm-wasmtime",
+                        "label":  "WASM commande (wasmtime)",
+                        "status":  "ok",
+                        "peak_kb":  13736,
+                        "samples_kb":  [
+                                           13612,
+                                           13704,
+                                           13736
+                                       ]
+                    }
+                ],
+    "k":  10000000,
+    "n":  45,
+    "machine":  "DESKTOP-RT454KD win"
+}

@@ -19,16 +19,18 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 2. `phase1_etat_de_l_art.md` — **fait** (2026-10-04)
 3. `docs-learning/ROADMAP.md` — avancement des 4 phases
 4. `docs-learning/LEARNING_STATE.md` — **état actuel + point de reprise**
-5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 005**)
+5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 006**)
+6. `conclusion.md` — **réponses aux 8 questions finales §11 + verdict hypothèse §9**
 
 ## 3. État en bref (contrôle 2026-10-04, session 1 — fin de session)
 
 - **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` (branche `main`, tout poussé).
 - **Phase 1 (état de l'art) : FAITE** → `phase1_etat_de_l_art.md` (mécanique ✅ / écosystémique ❌).
 - **Phase 2 (cartographie) : FAITE** → `phase2_cartographie.md` (8 domaines A–H, sources datées ; 8 contrats hétérogènes → question C confirmée).
-- **Phase 3 (HOUETOR Plugin Host) : FAITE** → `prototype/host/host.mjs` + `phase3_measures.md` (Exp 003 = 8/8 étapes §4 ; Exp 004 = comparatif §8 : natif 19,2 · WASM 70,7 · JS 112,3 · Python 5 718 ns/appel).
+- **Phase 3 (HOUETOR Plugin Host) : FAITE** → `prototype/host/host.mjs` + `phase3_measures.md` (Exp 003 = 8/8 étapes §4 ; Exp 004+006 = comparatif §8 **5 jambes** : natif 17,8 · wasmtime 27,2 · WASM-Node 59,9 · JS 80,5 · Python 4 127,6 ns/appel ; RSS : wasmtime 13,7 Mo vs Node 41,4 Mo).
 - **Phase 4 (pont WASM × MCP) : POC FAIT** → `prototype/mcp/bridge.mjs` (test 8/8, Exp 005 ; `tools/list` généré auto depuis les manifestes).
-- **Outillage local (2026-10-04)** : wasmtime **49.0.2** · Rust **1.99.0** (+ wasm32) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · **aucun GPU (inutile)**.
+- **Conclusion §11 : ÉCRITE** → `conclusion.md` (hypothèse §9 confirmée côté technique, nuancée côté écosystème).
+- **Outillage local (2026-10-04)** : wasmtime **49.0.2** · Rust **1.99.0** (+ wasm32) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · **aucun GPU (inutile)** · **attention : shells persistants n'ont pas les PATH récents → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~\.local\bin\wasmtime-*`)**.
 
 ## 4. Réponse rapide à la question « GPU en ligne ? »
 
@@ -57,9 +59,11 @@ node "prototype\host\host.mjs" bench hello fibonacci 45 1000000   # <plugin> <fn
 node "prototype\host\host.mjs" install "prototype\samples\needy"
 node "prototype\host\host.mjs" remove needy
 
-# Comparatif §8 (Phase 3) — 4 jambes, médiane de 5 spawns
+# Comparatif §8 (Phase 3) — 5 jambes, médiane de 5 spawns
 node "prototype\bench\run_bench.mjs"          # → results.json + table markdown
-# (rebuild natif si besoin : voir phase3_measures.md §6 — clang LLVM-MinGW)
+# (jambe native : voir phase3_measures.md §7 — clang LLVM-MinGW ;
+#  jambe wasmtime : cargo build --release --target wasm32-wasip2 (fib_wasi))
+powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\bench\peak_rss.ps1"  # RSS pic → peak_rss.json
 
 # Pont MCP (Phase 4)
 node "prototype\mcp\test_bridge.mjs"          # 8/8 attendus → transcript.json

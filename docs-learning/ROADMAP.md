@@ -8,12 +8,13 @@
 | **2 — Cartographie** | Répertorier les systèmes utilisant WASM (8 domaines A–H, y compris échecs) | ✅ **FAITE** (2026-10-04) | `phase2_cartographie.md` — sources datées, synthèse : 8 contrats hétérogènes |
 | **3 — Prototype** | **HOUETOR Plugin Host** : découvrir, valider, charger, permissions, appeler, retirer, versionner, mettre à jour + comparatif §8 | ✅ **MVP + MESURES FAITS** (2026-10-04) | `prototype/host/host.mjs` + `phase3_measures.md` — Exp 003/004 |
 | **4 — WASM × MCP** | Pont `Plugin WASM → WASM Host → MCP Bridge → Agent IA` : manifeste → outils automatiquement | ✅ **POC FAIT** (2026-10-04, test 8/8) | `prototype/mcp/bridge.mjs` + `phase4_mcp_bridge.md` — Exp 005 |
+| **Conclusion §11** | Répondre aux 8 questions finales + verdict hypothèse §9 | ✅ **ÉCRITE** (2026-10-04) | `conclusion.md` (preuves Exp 001→006) |
 
 ## État Phase 3 (détail)
 
-**Fait :** découverte, validation manifeste, chargement (compile+instantiate mesurés), **deny-by-default** (refus `env.host_log` + refus permission non accordée), appels mesurés, retrait, installation versionnée (`.history/`), mise à jour sans toucher au host, refus de version dupliquée, **comparatif §8 4 jambes** (natif 19,2 ns · WASM 70,7 ns · JS 112,3 ns · Python 5 718 ns par appel).
+**Fait :** découverte, validation manifeste, chargement (compile+instantiate mesurés), **deny-by-default**, appels mesurés, retrait, installation versionnée (`.history/`), mise à jour sans toucher au host, refus de version dupliquée, **comparatif §8 à 5 jambes** (Exp 006 : natif 17,8 · wasmtime 27,2 · WASM-Node 59,9 · JS 80,5 · Python 4 127,6 ns/appel) + **RSS pic externe** (`peak_rss.ps1` : wasmtime 13,7 Mo vs Node 41,4 Mo).
 
-**Reste (suite, non bloquant) :** WASI 0.2 réel (capabilities fichier/réseau via wasmtime), échanges avec chaînes/structs (WIT), signature/provenance des plugins, jambe **wasmtime CLI** du bench (isoler le RSS du runtime sans Node), portabilité multi-runtimes.
+**Reste (suite, non bloquant) :** WASI 0.2 réel (capabilities fichier/réseau), WIT (chaînes/structs), signature/provenance des plugins, portabilité 3ᵉ runtime (navigateur/autre OS), instruments install/mise à jour.
 
 ## État Phase 4 (détail)
 
@@ -32,7 +33,7 @@
 | Niveau de contrôle des permissions | ✅ | Exp 003 (manifeste ∩ allow-list hôte) |
 | Temps d'installation | 🟡 | non chronométré (fs local, ms) — à instrumenter |
 | Temps de mise à jour | 🟡 | idem |
-| Portabilité | 🟡 | même `hello.wasm` sur Node ici ; sous wasmtime/Firefox = suite |
+| Portabilité | 🟡→✅ partielle | même charge exécutée par **2 runtimes WASM différents** (V8/Node et wasmtime/Cranelift), même résultat (Exp 006) ; 3ᵉ runtime/OS = suite |
 | Complexité d'intégration | ✅ | hôte ≈ 250 lignes JS, 0 dépendance ; bridge ≈ 150 lignes, 0 dépendance |
 | Facilité de retrait | ✅ | Exp 003 (`remove`) |
 | Gestion des versions | ✅ | Exp 003 (`.history/`, refus doublon) |
@@ -40,13 +41,17 @@
 
 ## Comparaison expérimentale (étude §8)
 
-✅ Réalisée (2026-10-04) : natif / Python / JS / WASM → `phase3_measures.md` + `prototype/bench/results.json` (script reproductible `run_bench.mjs`, médiane de 5 spawns).
+✅ Réalisée (2026-10-04, **5 jambes**) : natif / Python / JS / WASM-host / WASM-wasmtime → `phase3_measures.md` + `prototype/bench/results.json` + `peak_rss.json` (scripts `run_bench.mjs`, `peak_rss.ps1`, médianes).
 
 ## Pont MCP × WASM (étude §5)
 
 ✅ Réalisé (2026-10-04) : `prototype/mcp/bridge.mjs`, test 8/8, `phase4_mcp_bridge.md`.
 
+## Conclusion §11 (8 questions + hypothèse §9)
+
+✅ Écrite (2026-10-04) : `conclusion.md` — hypothèse **confirmée côté technique, nuancée côté écosystème**.
+
 ## Blocages actuels
 
-- Aucun bloquant : outillage complet (Rust, wasmtime, Node, clang-MinGW, Python).
-- Suites ouvertes (non bloquantes) : leg wasmtime du bench, WIT/Component Model, client MCP externe, questions finales §11 de l'étude.
+- Aucun bloquant : outillage complet (Rust, wasmtime, Node, clang-MinGW, Python), 4 phases + conclusion livrées.
+- Suites ouvertes (non bloquantes) : portabilité 3ᵉ runtime, WIT/Component Model, client MCP externe, instrumenter install/update, workload non compute-bound.

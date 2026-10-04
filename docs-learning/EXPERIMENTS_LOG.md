@@ -163,4 +163,46 @@ Chaque jambe renvoie `result: 1134903170` (fib(45), même valeur). WASM : `cold_
 
 ---
 
-## Exp 006 — *(à venir)*
+## Exp 006 — Jambe wasmtime + RSS pic externe (2026-10-04)
+
+**Contexte :** étude §7/§8 — la jambe WASM passait par Node (RSS 41 MB = coût Node, pas du WASM) et WASI ne fournit pas `maxrss`.
+
+**Action :** (1) commande `prototype/bench/fib_wasi/` (Rust → `wasm32-wasip2`, même fib + `sink`) exécutée par **wasmtime 49.0.2** ; ajout comme 5ᵉ jambe dans `run_bench.mjs` (résolution auto du chemin `~/.local/bin/wasmtime-*/`) ; (2) `peak_rss.ps1` : RSS pic **externe** par polling `PeakWorkingSet64` pendant l'exécution (médiane de 3).
+
+**Preuves brutes :**
+
+Test direct wasmtime :
+```text
+{"impl":"wasm-wasmtime","result":"1134903170","first_call_us":13.900,"compute_ms":36.283,"per_call_ns":36.3,"k":1000000,"n":45,"maxrss_kb":0}
+```
+
+Comparatif final 5 jambes (`results.json`, 06:58:40Z, médianes de 5) :
+
+| Jambe | artefact (o) | wall (ms) | 1er appel (µs) | par appel (ns) |
+|---|---:|---:|---:|---:|
+| Natif (C) | 88 064 | 193,75 | 0,2 | **17,8** |
+| WASM wasmtime | 135 135 | 332,86 | 9,5 | **27,2** |
+| WASM plugin (host Node) | 160 | 760,69 | 2,0 | 59,9 |
+| JavaScript (Node) | 991 | 199,86 | 63,5 | 80,5 |
+| Python 3.14 | 1 735 | 618,30 | 10,9 | 4 127,6 |
+
+RSS pic externe (`peak_rss.json`, médiane de 3, workload complet) :
+```text
+Natif (C)                :  4 196 KB
+Python 3.14              : 16 268 KB
+JavaScript (Node)        : 40 328 KB
+WASM plugin (host Node)  : 41 424 KB
+WASM commande (wasmtime) : 13 736 KB
+```
+
+**Résultat :** avec un **runtime dédié, l'écart au natif tombe à 1,5×** (27,2 vs 17,8 ns — contre 3,4× via Node) ; wasmtime coûte **13,7 MB de RSS contre 41 MB pour Node (3× moins)** ; le plugin = **160 o + 1 Mo** de mémoire linéaire ; **portabilité multi-runtimes démontrée** : même charge, même résultat `1134903170` sous V8 (Node) **et** Cranelift (wasmtime).
+
+**2 bugs corrigés pendant l'Exp 006 :**
+1. `cargo`/`wasmtime` **absents du PATH** de la session persistante (installations post-démarrage) → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~/.local/bin/wasmtime-*/`), résolution dynamique dans le script.
+2. `Start-Process -ArgumentList` **échouait sur les chemins avec espace** (`Desktop\WASM WASI` coupé en 2 → « module not found » partout) et **tableau vide rejeté** → guillemetage automatique des args contenus en espace + branche sans ArgumentList. Les 1ʳˢ pics mesurés (processus en échec) étaient invalides → script corrigé, run refait proprement (aucune erreur en sortie).
+
+**Suite :** portabilité 3ᵉ runtime (navigateur/autre OS), instruments install/mise à jour, workload non compute-bound.
+
+---
+
+## Exp 007 — *(à venir)*

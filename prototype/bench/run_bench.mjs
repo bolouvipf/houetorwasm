@@ -18,6 +18,20 @@ const HOST = path.join(PROTO, "host", "host.mjs");
 const RUNS = Number(process.env.BENCH_RUNS ?? 5);
 const N = Number(process.env.BENCH_N ?? 45);
 
+// wasmtime : résolu depuis ~/.local/bin/wasmtime-*/wasmtime.exe (absent → jambe « absent »)
+const wasmtimeExe = (() => {
+  const base = path.join(process.env.USERPROFILE ?? "", ".local", "bin");
+  try {
+    for (const d of fs.readdirSync(base)) {
+      if (!d.startsWith("wasmtime")) continue;
+      const p = path.join(base, d, "wasmtime.exe");
+      if (fs.existsSync(p)) return p;
+    }
+  } catch { /* dossier absent */ }
+  return "wasmtime.exe"; // chemin PATH en secours
+})();
+const WASI_WASM = path.join(HERE, "fib_wasi", "target", "wasm32-wasip2", "release", "fib-wasi.wasm");
+
 const variants = [
   {
     id: "natif-c",
@@ -50,6 +64,14 @@ const variants = [
     args: [HOST, "bench", "hello", "fibonacci", String(N), "{K}"], // {K} remplacé par v.k
     k: 10_000_000,
     size: path.join(PROTO, "plugins", "hello", "hello.wasm"),
+  },
+  {
+    id: "wasm-wasmtime",
+    label: "WASM commande (wasmtime 49, sans Node)",
+    cmd: wasmtimeExe,
+    args: ["run", WASI_WASM, "{K}", String(N)],
+    k: 10_000_000,
+    size: WASI_WASM,
   },
 ];
 
