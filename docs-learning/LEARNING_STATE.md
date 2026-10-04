@@ -24,9 +24,10 @@
    - **9/9 policy** (Exp 015) : filtrage allow/deny via `HOUETOR_MCP_POLICY` (deny prime, hors-allow refusé **avant** le host, policy cassée = **fail-closed**, sans variable = rétrocompat) → `policy_test.json` — **3ᵉ barrière** (bridge → policy → host).
    - **Outils typés ✅** (Exp 019) : pour un composant, `tools/list` expose un `inputSchema` à **propriétés nommées typées** `{a: number, b: number}` (required, types WIT dans la description) ; `tools/call` mappe nommé → positionnel et refuse le paramètre manquant — **fin du `number[]`** ; modules core = schéma legacy inchangé, régressions **8/8 + 9/9**.
 5. **Conclusion §11 écrite** → `conclusion.md` : réponses aux 8 questions + verdict hypothèse §9 (**confirmée côté technique, nuancée côté écosystème**).
-6. **Structure lab** : `AGENTS.md`, `docs-learning/{ROADMAP,LEARNING_STATE,EXPERIMENTS_LOG}.md` (Exp 001→021).
-7. **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` — tout poussé (dernier commit de session : docs + conclusion).
-8. **Toolchain** : wasmtime 49.0.2 · **wazero 1.12** (Exp 007) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · **Extism CLI 1.6.3** (Exp 021, `~\.local\bin\extism\extism.exe`) · Rust 1.99.0 (+ wasm32, cible `wasm32-wasip2`) · Node 24.15.0 · Python 3.14 · **clang/LLVM-MinGW 22.1.8** · GPU inutile (tranché) · Wasmer 7.5 = non fonctionnel ici (voir Exp 007).
+6. **Rapport scientifique écrit** → `rapport_scientifique.md` (résumé, matériel/méthodes, résultats 4 phases, discussion §4.1-4.3, **menaces à la validité §5**, reproductibilité §6, travaux futurs) — synthèse de tout le travail, référencée par `README.md` + `AGENTS.md` §2.
+7. **Structure lab** : `AGENTS.md`, `docs-learning/{ROADMAP,LEARNING_STATE,EXPERIMENTS_LOG}.md` (Exp 001→021).
+8. **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` — tout poussé (dernier commit de session : rapport scientifique + docs Exp 021).
+9. **Toolchain** : wasmtime 49.0.2 · **wazero 1.12** (Exp 007) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · **Extism CLI 1.6.3** (Exp 021, `~\.local\bin\extism\extism.exe`) · Rust 1.99.0 (+ wasm32, cible `wasm32-wasip2`) · Node 24.15.0 · Python 3.14 · **clang/LLVM-MinGW 22.1.8** · GPU inutile (tranché) · Wasmer 7.5 = non fonctionnel ici (voir Exp 007).
 
 ## À faire ⏳ (suite recommandée, par ordre)
 
@@ -40,7 +41,7 @@
 
 > Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012), **distribution ✅ registre/HTTP** (Exp 013), **Component Model ✅ testé** (Exp 018-019), **anti-DoS ✅ fuel/timeout** (Exp 020), **comparaison d'écosystème ✅ Extism** (Exp 021). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
 > Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, `~\.local\bin\wit-bindgen.exe`, `~\.local\bin\wasm-tools.exe`, `~\.local\bin\extism\extism.exe`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
-> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 021**) → `conclusion.md`.
+> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 021**) → `conclusion.md` → `rapport_scientifique.md` (synthèse globale).
 > Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `node prototype\mcp\policy_test.mjs` (9/9) + `node prototype\bench\component_test.mjs` (20/20) + `node prototype\bench\fuel_test.mjs` (12/12) + `node prototype\bench\extism_test.mjs` (11/11) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) + `node prototype\bench\sig_test.mjs` (12/12) (tout vert).
 
 ## Décisions de session

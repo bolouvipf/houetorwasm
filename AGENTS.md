@@ -21,6 +21,7 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 4. `docs-learning/LEARNING_STATE.md` — **état actuel + point de reprise**
 5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 021**)
 6. `conclusion.md` — **réponses aux 8 questions finales §11 + verdict hypothèse §9**
+7. `rapport_scientifique.md` — synthèse de tout le travail (résumé → méthode → résultats → limites)
 
 ## 3. État en bref (contrôle 2026-10-04, sessions 1+2 — fin de session)
 

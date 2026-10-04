@@ -13,6 +13,7 @@ Sous-titre : **Interopérabilité, sécurité, portabilité et intégration avec
 | `phase3_measures.md` | Phase 3 — mesures comparatives §8 : natif/Python/JS/WASM ✅ |
 | `phase4_mcp_bridge.md` | Phase 4 — pont WASM × MCP, manifeste → outils MCP ✅ |
 | `conclusion.md` | **Réponses aux 8 questions finales §11 + verdict sur l'hypothèse §9** ✅ |
+| `rapport_scientifique.md` | **Rapport scientifique synthétique** (résumé, méthode, résultats, discussion, limites, reproductibilité) ✅ |
 | `AGENTS.md` | Mémoire d'entrée (ordre de lecture, règles, état) |
 | `docs-learning/ROADMAP.md` | Avancement des 4 phases |
 | `docs-learning/LEARNING_STATE.md` | État actuel + point de reprise |
