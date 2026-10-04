@@ -1,25 +1,25 @@
 {
-  "date": "2026-10-04T10:46:44.018Z",
+  "date": "2026-10-04T11:51:48.317Z",
   "machine": "win32 x64 v24.15.0",
   "cycles": 5,
-  "baseline_spawn_ms": 73.3,
+  "baseline_spawn_ms": 118.7,
   "note": "net_ms = médiane wall moins baseline spawn node (opérations fs locales)",
   "results": {
     "install": {
-      "wall_ms": 91.8,
-      "net_ms": 18.5
+      "wall_ms": 88.6,
+      "net_ms": -30.1
     },
     "install_dup": {
-      "wall_ms": 81.1,
-      "net_ms": 7.9
+      "wall_ms": 79.9,
+      "net_ms": -38.8
     },
     "update": {
-      "wall_ms": 98,
-      "net_ms": 24.7
+      "wall_ms": 93.9,
+      "net_ms": -24.8
     },
     "remove": {
-      "wall_ms": 87.5,
-      "net_ms": 14.2
+      "wall_ms": 83.8,
+      "net_ms": -34.9
     }
   },
   "checks": {

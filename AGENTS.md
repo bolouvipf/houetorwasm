@@ -19,7 +19,7 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 2. `phase1_etat_de_l_art.md` — **fait** (2026-10-04)
 3. `docs-learning/ROADMAP.md` — avancement des 4 phases
 4. `docs-learning/LEARNING_STATE.md` — **état actuel + point de reprise**
-5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 012**)
+5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 013**)
 6. `conclusion.md` — **réponses aux 8 questions finales §11 + verdict hypothèse §9**
 
 ## 3. État en bref (contrôle 2026-10-04, session 1 — fin de session)
@@ -27,7 +27,7 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 - **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` (branche `main`, tout poussé).
 - **Phase 1 (état de l'art) : FAITE** → `phase1_etat_de_l_art.md` (mécanique ✅ / écosystémique ❌).
 - **Phase 2 (cartographie) : FAITE** → `phase2_cartographie.md` (8 domaines A–H, sources datées ; 8 contrats hétérogènes → question C confirmée).
-- **Phase 3 (HOUETOR Plugin Host) : FAITE** → `prototype/host/host.mjs` + `phase3_measures.md` (Exp 003 = 8/8 étapes §4 ; Exp 004+006+009 = comparatif §8 **5 jambes**, campagne canonique n=9 : natif 7,2 · wasmtime 13,9 · WASM-Node 24,5 · JS 34,3 · Python 1 594 ns/appel, **fourchettes sur 5 campagnes** Exp 009 ; RSS : wasmtime 14,4 Mo vs Node 40,5 Mo ; **Exp 007+010 = portabilité : même binaire sur 2 OS (Windows+Linux/WSL2), 4 exécuteurs, 3 moteurs, même résultat** → `portability.json` + `portability_os.json` ; **Exp 008 = cycle de vie chronométré : install 18,5 / update 24,7 / remove 14,2 ms fs net** → `lifecycle.json` ; **Exp 011+012 = capabilities fichier WASI (lecture/écriture) : grant ok / évasion refusée / aucun accord refusé / ro bloqué — 21 checks sur 3 moteurs** → `wasi_caps.json` + `wasi_write.json`).
+- **Phase 3 (HOUETOR Plugin Host) : FAITE** → `prototype/host/host.mjs` + `phase3_measures.md` (Exp 003 = 8/8 étapes §4 ; Exp 004+006+009 = comparatif §8 **5 jambes**, campagne canonique n=9 : natif 7,2 · wasmtime 13,9 · WASM-Node 24,5 · JS 34,3 · Python 1 594 ns/appel, **fourchettes sur 5 campagnes** Exp 009 ; RSS : wasmtime 14,4 Mo vs Node 40,5 Mo ; **Exp 007+010 = portabilité : même binaire sur 2 OS (Windows+Linux/WSL2), 4 exécuteurs, 3 moteurs, même résultat** → `portability.json` + `portability_os.json` ; **Exp 008 = cycle de vie chronométré : install 18,5 / update 24,7 / remove 14,2 ms fs net** → `lifecycle.json` ; **Exp 011+012 = capabilities fichier WASI (lecture/écriture) : grant ok / évasion refusée / aucun accord refusé / ro bloqué — 21 checks sur 3 moteurs** → `wasi_caps.json` + `wasi_write.json` ; **Exp 013 = distribution : registre local + install-url HTTP (découverte → téléchargement → validation → mise à jour versionnée) — 11/11 checks, install 224 ms** → `registry_test.json`).
 - **Phase 4 (pont WASM × MCP) : POC FAIT** → `prototype/mcp/bridge.mjs` (test 8/8, Exp 005 ; `tools/list` généré auto depuis les manifestes).
 - **Conclusion §11 : ÉCRITE** → `conclusion.md` (hypothèse §9 confirmée côté technique, nuancée côté écosystème).
 - **Outillage local (2026-10-04)** : wasmtime **49.0.2** (Windows + Linux/WSL2) · **wazero 1.12** (Exp 007/010, `%TEMP%\opencode\wazero\` + `~/tools` WSL) · **WSL2 Ubuntu 26.04** (8 cœurs) · Rust **1.99.0** (+ wasm32) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · Wasmer 7.5 = non fonctionnel ici · **aucun GPU (inutile)** · **attention : shells persistants n'ont pas les PATH récents → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~\.local\bin\wasmtime-*`)**.
@@ -58,6 +58,8 @@ node "prototype\host\host.mjs" run hello add 2 3.5
 node "prototype\host\host.mjs" bench hello fibonacci 45 1000000   # <plugin> <fn> <args> <iters>
 node "prototype\host\host.mjs" install "prototype\samples\needy"
 node "prototype\host\host.mjs" remove needy
+node "prototype\host\host.mjs" registry <dossier-registre>       # Exp 013 : découverte <reg>/<nom>/<version>/manifest.json
+node "prototype\host\host.mjs" install-url <baseURL>             # Exp 013 : install depuis HTTP (ex. http://127.0.0.1:PORT/reg/1.0.0/)
 
 # Comparatif §8 (Phase 3) — 5 jambes ; campagne canonique : BENCH_RUNS=9 (Exp 009)
 $env:BENCH_RUNS="9"; node "prototype\bench\run_bench.mjs"   # → results.json + table markdown
@@ -69,6 +71,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\bench\portability
 node "prototype\bench\lifecycle.mjs"          # Exp 008 : install/update/remove chronométrés → lifecycle.json
 node "prototype\bench\wasi_caps.mjs"          # Exp 011 : lecture sandboxée (9/9) → wasi_caps.json
 node "prototype\bench\wasi_write.mjs"         # Exp 012 : écriture + ro (21 checks) → wasi_write.json
+node "prototype\bench\registry_test.mjs"      # Exp 013 : registre + install-url HTTP (11/11) → registry_test.json
 
 # Pont MCP (Phase 4)
 node "prototype\mcp\test_bridge.mjs"          # 8/8 attendus → transcript.json

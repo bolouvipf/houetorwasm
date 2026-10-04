@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // HOUETOR Plugin Host — MVP (Phase 3)
-// Cycle de vie : discover -> validate manifest -> load (deny-by-default) -> call -> bench -> install -> remove
-// Usage : node host.mjs <list|info|run|bench|install|remove> [...]
+// Cycle de vie : discover -> validate manifest -> load (deny-by-default) -> call -> bench -> install -> remove -> registry
+// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry> [...]
 
 import fs from "node:fs";
 import path from "node:path";
@@ -84,6 +84,45 @@ function parseArgs(argv) {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
+
+// Installation partagée (install local + install-url) : src = dossier contenant manifest.json + wasm
+function doInstall(src, srcManifest) {
+  const dest = path.join(PLUGINS, srcManifest.name);
+  if (fs.existsSync(dest)) {
+    const old = JSON.parse(fs.readFileSync(path.join(dest, "manifest.json"), "utf8"));
+    if (old.version === srcManifest.version) die(`${srcManifest.name} : version ${old.version} déjà installée (incrémentez la version)`);
+    const hist = path.join(dest, ".history");
+    fs.mkdirSync(hist, { recursive: true });
+    const archive = path.join(hist, old.version);
+    // cpSync interdit de copier un dossier dans son propre sous-dossier :
+    // on archive d'abord via un dossier temporaire à l'extérieur, puis on déplace.
+    const tmp = path.join(PLUGINS, `.archive-tmp-${old.version}`);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.cpSync(dest, tmp, {
+      recursive: true,
+      filter: (s) => !s.includes(".history") && !s.includes(path.sep + "target"),
+    });
+    fs.rmSync(archive, { recursive: true, force: true });
+    fs.renameSync(tmp, archive);
+    console.log(`[host] version précédente ${old.version} archivée → ${path.relative(ROOT, archive)}`);
+  }
+  fs.mkdirSync(PLUGINS, { recursive: true });
+  fs.cpSync(src, dest, { recursive: true });
+  // revalide après installation
+  loadManifest(srcManifest.name);
+  console.log(`[host] installé : ${srcManifest.name}@${srcManifest.version}`);
+}
+
+// Validation rapide AVANT installation (manifeste distant non fiable)
+function precheckManifest(raw, ctx) {
+  for (const field of ["name", "version", "wasm", "exports"]) {
+    if (!(field in raw)) die(`${ctx} : champ obligatoire manquant dans le manifeste : "${field}"`);
+  }
+  if (!Array.isArray(raw.exports) || raw.exports.length === 0) die(`${ctx} : "exports" doit être un tableau non vide`);
+  const perms = raw.permissions ?? [];
+  const illegal = perms.filter((p) => !HOST_ALLOWED.includes(p));
+  if (illegal.length) die(`${ctx} : permissions NON accordées par l'hôte : ${illegal.join(", ")}`);
+}
 
 switch (cmd) {
   case "list": {
@@ -194,30 +233,85 @@ switch (cmd) {
     const src = rest[0];
     if (!src) die("usage : install <dossier-plugin>");
     const srcManifest = JSON.parse(fs.readFileSync(path.join(src, "manifest.json"), "utf8"));
-    const dest = path.join(PLUGINS, srcManifest.name);
-    if (fs.existsSync(dest)) {
-      const old = JSON.parse(fs.readFileSync(path.join(dest, "manifest.json"), "utf8"));
-      if (old.version === srcManifest.version) die(`${srcManifest.name} : version ${old.version} déjà installée (incrémentez la version)`);
-      const hist = path.join(dest, ".history");
-      fs.mkdirSync(hist, { recursive: true });
-      const archive = path.join(hist, old.version);
-      // cpSync interdit de copier un dossier dans son propre sous-dossier :
-      // on archive d'abord via un dossier temporaire à l'extérieur, puis on déplace.
-      const tmp = path.join(PLUGINS, `.archive-tmp-${old.version}`);
-      fs.rmSync(tmp, { recursive: true, force: true });
-      fs.cpSync(dest, tmp, {
-        recursive: true,
-        filter: (s) => !s.includes(".history") && !s.includes(path.sep + "target"),
-      });
-      fs.rmSync(archive, { recursive: true, force: true });
-      fs.renameSync(tmp, archive);
-      console.log(`[host] version précédente ${old.version} archivée → ${path.relative(ROOT, archive)}`);
+    doInstall(src, srcManifest);
+    break;
+  }
+
+  case "install-url": {
+    // Registre distant : <base>/manifest.json + <base>/<wasm> (HTTP(S) ou file://)
+    const base = rest[0];
+    if (!base) die("usage : install-url <baseURL>   (ex. http://127.0.0.1:5099/regprobe/1.0.1)");
+    let manifest;
+    try {
+      const res = await fetch(new URL("manifest.json", base));
+      if (!res.ok) die(`install-url : manifest.json inaccessible (HTTP ${res.status})`);
+      manifest = await res.json();
+    } catch (e) {
+      die(`install-url : échec du téléchargement du manifeste (${e.message})`);
     }
-    fs.mkdirSync(PLUGINS, { recursive: true });
-    fs.cpSync(src, dest, { recursive: true });
-    // revalide après installation
-    loadManifest(srcManifest.name);
-    console.log(`[host] installé : ${srcManifest.name}@${srcManifest.version}`);
+    precheckManifest(manifest, `${base} (manifeste distant)`);
+    // doublon testé AVANT staging : die() ne déclenche pas de cleanup
+    const destCheck = path.join(PLUGINS, manifest.name);
+    if (fs.existsSync(destCheck)) {
+      const old = JSON.parse(fs.readFileSync(path.join(destCheck, "manifest.json"), "utf8"));
+      if (old.version === manifest.version)
+        die(`${manifest.name} : version ${old.version} déjà installée (incrémentez la version)`);
+    }
+    const staging = path.join(PLUGINS, `.staging-${manifest.name}-${manifest.version}`);
+    fs.rmSync(staging, { recursive: true, force: true });
+    fs.mkdirSync(staging, { recursive: true });
+    // NB : die() = process.exit → pas de finally fiable ; on nettoie AVANT chaque sortie d'erreur
+    let wRes;
+    try {
+      wRes = await fetch(new URL(String(manifest.wasm), base));
+    } catch (e) {
+      fs.rmSync(staging, { recursive: true, force: true });
+      die(`install-url : échec du téléchargement du wasm (${e.message})`);
+    }
+    if (!wRes.ok) {
+      fs.rmSync(staging, { recursive: true, force: true });
+      die(`install-url : wasm inaccessible (HTTP ${wRes.status})`);
+    }
+    // chemin wasm exact du manifeste (sous-dossiers possibles)
+    const wasmDest = path.join(staging, String(manifest.wasm));
+    fs.mkdirSync(path.dirname(wasmDest), { recursive: true });
+    fs.writeFileSync(wasmDest, Buffer.from(await wRes.arrayBuffer()));
+    fs.writeFileSync(path.join(staging, "manifest.json"), JSON.stringify(manifest, null, 2));
+    doInstall(staging, manifest);
+    fs.rmSync(staging, { recursive: true, force: true });
+    break;
+  }
+
+  case "registry": {
+    // Layout : <registre>/<nom>/<version>/manifest.json  → découverte sans installation
+    const reg = rest[0];
+    if (!reg) die("usage : registry <dossier-registre>   (layout <reg>/<nom>/<version>/manifest.json)");
+    if (!fs.existsSync(reg)) die(`registre introuvable : ${reg}`);
+    let count = 0;
+    for (const name of fs.readdirSync(reg)) {
+      const nameDir = path.join(reg, name);
+      if (!fs.statSync(nameDir).isDirectory()) continue;
+      for (const version of fs.readdirSync(nameDir)) {
+        const mPath = path.join(nameDir, version, "manifest.json");
+        if (!fs.existsSync(mPath)) continue;
+        // un registre peut contenir des entrées corrompues : on les signale sans planter
+        let m;
+        try {
+          m = JSON.parse(fs.readFileSync(mPath, "utf8"));
+          if (!Array.isArray(m.exports)) throw new Error('"exports" absent ou invalide');
+        } catch (e) {
+          console.log(`${name}@${version}  INVALIDE (${e.message}) — ignoré`);
+          count++;
+          continue;
+        }
+        const wasmSize = fs.existsSync(path.join(nameDir, version, m.wasm))
+          ? fs.statSync(path.join(nameDir, version, m.wasm)).size
+          : "?";
+        console.log(`${m.name}@${m.version}  size=${wasmSize}B  exports=[${m.exports.join(",")}]  perms=[${(m.permissions ?? []).join(",") || "aucune"}]`);
+        count++;
+      }
+    }
+    if (!count) console.log(`[host] registre vide : ${reg}`);
     break;
   }
 
@@ -232,5 +326,5 @@ switch (cmd) {
   }
 
   default:
-    die("usage : host.mjs <list|info|run|bench|install|remove> [args...]");
+    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry> [args...]");
 }

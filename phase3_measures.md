@@ -73,6 +73,24 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 
 **1 fichier → 2 OS (Windows + Linux) · 3 moteurs indépendants (Cranelift, Go, V8) · 2 formats (p1/p2) · 7 combinaisons, 1 résultat identique.**
 
+## 3ter. Distribution — registre + install-url HTTP (Exp 013)
+
+`host.mjs` ajoute `registry` (découverte, layout `<reg>/<nom>/<version>/manifest.json`) et `install-url` (fetch manifeste+wasm → staging → validation → installation versionnée). Test : `node prototype\bench\registry_test.mjs` → `registry_test.json`, **11/11 checks** (registre servi en HTTP local = « distant ») :
+
+| Scénario | Verdict | Preuve hôte |
+|---|---|---|
+| Découverte registry (2 versions + 1 entrée corrompue) | ✅ | corrompue listée `INVALIDE — ignoré`, pas de plantage |
+| install-url v1.0.0 + appel | ✅ | `regprobe@1.0.0` installé, `fibonacci(10)=55` |
+| Mise à jour à distance v1.0.1 | ✅ | `.history/1.0.0` archivé, version courante 1.0.1 |
+| Doublon (même version) | ✅ | refusé **avant** staging |
+| Manifeste distant corrompu (exports manquant) | ✅ | rejeté **avant** staging, plugin installé intact |
+| wasm distant 404 | ✅ | rejeté, staging nettoyé (aucun résidu) |
+| Nettoyage final | ✅ | témoin retiré, `hello`/`needy` intacts, 0 staging résiduel |
+
+Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (update) — wall inclus spawn Node ≈ 73 ms ; traitement réel ≈ 150 ms (fetch + staging + archivage + revalidation).
+
+**Lecture** : la couche distribution/découverte (lacune Q4) se comble en ~80 lignes au-dessus du manifeste existant — mais elle reste **maison** : pas de standard de registre, pas de signature/provenance (limite notée Exp 013).
+
 ## 4. Lecture par critère (étude §7)
 
 | Critère | Preuve mesurée | Verdict |
@@ -142,6 +160,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\portability_
 
 # 7. Capabilities fichier WASI (Exp 011-012) : lecture+écriture, grant/escape/ro/nogrant → wasi_caps.json / wasi_write.json
 #    (modules : cargo build --release --target wasm32-wasip1 --manifest-path prototype\samples\filecap\Cargo.toml)
+
+# 8. Distribution : registre local + install-url HTTP (Exp 013) → registry_test.json (11/11)
+node "prototype\bench\registry_test.mjs"
 node prototype\bench\wasi_caps.mjs
 node prototype\bench\wasi_write.mjs
 ```

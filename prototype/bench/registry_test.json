@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-04T11:46:26.116Z",
+  "machine": "win32 x64 v24.15.0",
+  "registry_layout": "<reg>/<nom>/<version>/{manifest.json,wasm}",
+  "base_url": "http://127.0.0.1:<port>",
+  "timings_ms": {
+    "install_v1": 224.2,
+    "install_v2": 224.1
+  },
+  "checks": [
+    {
+      "id": "R1 registry liste les 2 versions",
+      "pass": true,
+      "detail": "regprobe@1.0.0  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe@1.0.1  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-404@1.0.0  size=?B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-corrupt@9.9.9  INVALIDE (\"exports\" absent ou invalide) — ignoré"
+    },
+    {
+      "id": "R2 install-url 1.0.0",
+      "pass": true,
+      "detail": "[host] installé : regprobe@1.0.0"
+    },
+    {
+      "id": "R2 appel fibonacci(10)=55",
+      "pass": true,
+      "detail": "result=55"
+    },
+    {
+      "id": "R3 mise à jour 1.0.1 + .history/1.0.0",
+      "pass": true,
+      "detail": "version=1.0.1 history=true"
+    },
+    {
+      "id": "R4 doublon refusé",
+      "pass": true,
+      "detail": "[host] ERREUR : regprobe : version 1.0.1 déjà installée (incrémentez la version)"
+    },
+    {
+      "id": "R5 manifeste corrompu refusé (rien installé)",
+      "pass": true,
+      "detail": "[host] ERREUR : http://127.0.0.1:64737/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
+    },
+    {
+      "id": "R5 plugin courant intact",
+      "pass": true,
+      "detail": "version=1.0.1"
+    },
+    {
+      "id": "R6 wasm 404 refusé, staging nettoyé",
+      "pass": true,
+      "detail": "[host] ERREUR : install-url : wasm inaccessible (HTTP 404)"
+    },
+    {
+      "id": "nettoyage : témoin retiré",
+      "pass": true,
+      "detail": "gone=true"
+    },
+    {
+      "id": "hello/needy intacts",
+      "pass": true,
+      "detail": "hello=true needy=true"
+    },
+    {
+      "id": "aucun staging résiduel",
+      "pass": true,
+      "detail": "staging=false"
+    }
+  ],
+  "all_checks_pass": true
+}

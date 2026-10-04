@@ -395,4 +395,38 @@ Contenu lu sous grant : `len=16, byte_sum=1157` — **identique sur les 3 runtim
 
 ---
 
-## Exp 013 — *(à venir)*
+## Exp 013 — Distribution : registre local + installation depuis HTTP (2026-10-04)
+
+**Contexte :** conclusion §11 Q4 identifiait la **découverte/distribution** comme lacune écosystémique (« aucun registre/manifeste standard ») — restait à *démontrer* qu'une couche de distribution tient en peu de lignes au-dessus du même manifeste.
+
+**Action :**
+- `host.mjs` : nouvelles commandes **`registry <dossier>`** (découverte sans installation, layout `<reg>/<nom>/<version>/{manifest.json,wasm}`) et **`install-url <baseURL>`** (téléchargement manifeste + wasm via `fetch`, staging temporaire, validation **avant** installation, pipeline `doInstall` partagé avec l'install local) ;
+- script `prototype/bench/registry_test.mjs` : registre temporaire + **serveur HTTP local** (Node `http`, port éphémère) = registre distant, 6 scénarios R1-R6, contrôles hôte (présence/absence réelle de fichiers).
+
+**Preuves brutes** (`registry_test.json`, `all_checks_pass: true`, 11/11) :
+
+```text
+✅ R1 registry liste les 2 versions — regprobe@1.0.0 size=160B | regprobe@1.0.1 size=160B | regprobe-404@1.0.0 size=?B | regprobe-corrupt@9.9.9 INVALIDE ("exports" absent ou invalide) — ignoré
+✅ R2 install-url 1.0.0 — [host] installé : regprobe@1.0.0
+✅ R2 appel fibonacci(10)=55 — result=55
+✅ R3 mise à jour 1.0.1 + .history/1.0.0 — version=1.0.1 history=true
+✅ R4 doublon refusé — [host] ERREUR : regprobe : version 1.0.1 déjà installée (incrémentez la version)
+✅ R5 manifeste corrompu refusé (rien installé) — champ obligatoire manquant : "exports"
+✅ R5 plugin courant intact — version=1.0.1
+✅ R6 wasm 404 refusé, staging nettoyé — [host] ERREUR : wasm inaccessible (HTTP 404)
+✅ nettoyage : témoin retiré — gone=true
+✅ hello/needy intacts — hello=true needy=true
+✅ aucun staging résiduel — staging=false
+```
+
+Durées (`timings_ms`) : install_url v1 **224,2 ms** · v2 (mise à jour) **224,1 ms** (wall avec spawn Node ≈ 73 ms → ≈ 150 ms de traitement : fetch + staging + archivage `.history` + revalidation).
+
+**Résultat :**
+- **Distribution prouvée de bout en bout** : découverte (registry) → téléchargement HTTP → validation → installation → mise à jour versionnée (`.history`) → appel fonctionnel, le tout avec le **même déni-par-défaut** (manifeste distant pré-validé : champs, exports non vides, permissions ∈ allow-list) ;
+- **Le registre distant non fiable n'installe rien de mauvais** : manifeste corrompu rejeté *avant* staging, wasm 404 rejeté *avec* staging nettoyé, doublon rejeté *avant* staging, plugin installé précédent intact ;
+- entrées corrompues du registre : listées `INVALIDE — ignoré`, le host ne plante pas ;
+- bugs trouvés et corrigés en cours d'Exp : (1) deadlock `spawnSync` vs serveur HTTP dans le même process → `spawn` asynchrone ; (2) `die()` (= `process.exit`) court-circuitait le `finally` de nettoyage → contrôles de sortie *avant* création du staging ; (3) registre plantait sur `exports` absent → skip+warning.
+
+**Limite honnête :** le « distant » = HTTP localhost (le protocole est réel, pas l'échelle internet : pas d'HTTPS/signature/protocole de résolution de versions — voir suites signature/provenance).
+
+**Suite :** WASI réseau (sockets), WIT, signature/provenance des plugins, client MCP externe.
