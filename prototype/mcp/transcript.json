@@ -1,0 +1,262 @@
+[
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {},
+        "clientInfo": {
+          "name": "houetor-test-client",
+          "version": "0.1.0"
+        }
+      }
+    }
+  },
+  {
+    "dir": "← bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "protocolVersion": "2025-06-18",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "houetor-mcp-bridge",
+          "version": "0.1.0"
+        }
+      }
+    }
+  },
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "method": "notifications/initialized"
+    }
+  },
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/list"
+    }
+  },
+  {
+    "dir": "← bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "tools": [
+          {
+            "name": "hello_add",
+            "description": "Plugin WASM hello@1.0.1 — fonction exportée « add » (découverte automatique depuis manifest.json ; sandbox deny-by-default, permissions accordées : aucune)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Arguments positionnels (nombres) passés à la fonction WASM",
+                  "default": []
+                }
+              },
+              "required": []
+            }
+          },
+          {
+            "name": "hello_fibonacci",
+            "description": "Plugin WASM hello@1.0.1 — fonction exportée « fibonacci » (découverte automatique depuis manifest.json ; sandbox deny-by-default, permissions accordées : aucune)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Arguments positionnels (nombres) passés à la fonction WASM",
+                  "default": []
+                }
+              },
+              "required": []
+            }
+          },
+          {
+            "name": "hello_plugin_version",
+            "description": "Plugin WASM hello@1.0.1 — fonction exportée « plugin_version » (découverte automatique depuis manifest.json ; sandbox deny-by-default, permissions accordées : aucune)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Arguments positionnels (nombres) passés à la fonction WASM",
+                  "default": []
+                }
+              },
+              "required": []
+            }
+          },
+          {
+            "name": "needy_do_log",
+            "description": "Plugin WASM needy@1.0.0 — fonction exportée « do_log » (découverte automatique depuis manifest.json ; sandbox deny-by-default, permissions accordées : aucune)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Arguments positionnels (nombres) passés à la fonction WASM",
+                  "default": []
+                }
+              },
+              "required": []
+            }
+          },
+          {
+            "name": "needy_plugin_version",
+            "description": "Plugin WASM needy@1.0.0 — fonction exportée « plugin_version » (découverte automatique depuis manifest.json ; sandbox deny-by-default, permissions accordées : aucune)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "description": "Arguments positionnels (nombres) passés à la fonction WASM",
+                  "default": []
+                }
+              },
+              "required": []
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call",
+      "params": {
+        "name": "hello_add",
+        "arguments": {
+          "args": [
+            2,
+            3.5
+          ]
+        }
+      }
+    }
+  },
+  {
+    "dir": "← bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"plugin\": \"hello@1.0.1\",\n  \"call\": \"add\",\n  \"args\": [\n    \"2\",\n    \"3.5\"\n  ],\n  \"result\": 5.5,\n  \"timings_ms\": {\n    \"load\": 1.961,\n    \"compile\": 1.033,\n    \"instantiate\": 0.186,\n    \"call\": 0.2801\n  },\n  \"wasm_bytes\": 160,\n  \"memory_bytes\": 1048576,\n  \"imports_granted\": 0\n}"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "tools/call",
+      "params": {
+        "name": "does_not_exist",
+        "arguments": {}
+      }
+    }
+  },
+  {
+    "dir": "← bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "outil inconnu : does_not_exist"
+          }
+        ],
+        "isError": true
+      }
+    }
+  },
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "tools/call",
+      "params": {
+        "name": "needy_do_log",
+        "arguments": {
+          "args": [
+            1
+          ]
+        }
+      }
+    }
+  },
+  {
+    "dir": "← bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "[host] ERREUR : needy : chargement refusé — sandbox deny-by-default : imports refusés [env.host_log] (permissions accordées : aucune)"
+          }
+        ],
+        "isError": true
+      }
+    }
+  },
+  {
+    "dir": "→ bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "resources/list"
+    }
+  },
+  {
+    "dir": "← bridge",
+    "msg": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "error": {
+        "code": -32601,
+        "message": "method not found : resources/list"
+      }
+    }
+  }
+]

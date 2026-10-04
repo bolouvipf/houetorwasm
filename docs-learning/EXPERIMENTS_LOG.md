@@ -135,4 +135,32 @@ Chaque jambe renvoie `result: 1134903170` (fib(45), même valeur). WASM : `cold_
 
 ---
 
-## Exp 005 — *(à venir)*
+## Exp 005 — Phase 4 : pont WASM × MCP, manifeste → outils MCP (2026-10-04)
+
+**Contexte :** étude §5 « un composant WASM peut-il être transformé automatiquement en outil MCP ? »
+
+**Action :** `prototype/mcp/bridge.mjs` — serveur MCP (stdio, JSON-RPC 2.0, **0 dépendance**) qui génère `tools/list` **à partir des manifestes** découverts via `host.mjs` (client pur du host) ; test `test_bridge.mjs` (handshake complet + assertions).
+
+**Preuves brutes (sortie `node prototype\mcp\test_bridge.mjs` → exit=0) :**
+
+```text
+✅ initialize : serverInfo — {"name":"houetor-mcp-bridge","version":"0.1.0"}
+   outils générés automatiquement : ["hello_add","hello_fibonacci","hello_plugin_version","needy_do_log","needy_plugin_version"]
+✅ tools/list auto : exports de hello → outils MCP
+✅ schéma JSON du tool (inputSchema) — {"type":"object","properties":{"args":{...}}}
+✅ tools/call hello_add(2, 3.5) → résultat 5.5 via host deny-by-default — result=5.5 plugin=hello@1.0.1
+✅ outil inconnu refusé — outil inconnu : does_not_exist
+✅ défense en profondeur : needy_do_log exposé mais REFUSÉ par le host —
+   [host] ERREUR : needy : chargement refusé — sandbox deny-by-default : imports refusés [env.host_log] (permissions accordées : aucune)
+✅ method inconnue → -32601
+8/8 étapes OK → transcript.json
+```
+
+**Résultat :** **réponse OUI** à la question §5 (transformation automatique, zéro intégration agent), avec limites listées (typage `number[]` seulement — le manque vient de l'absence de WIT/Component Model, pas de MCP). **Découverte** : défense en profondeur — un plugin installé est exposé en outil MAIS le host refuse son appel si permissions manquantes (2 barrières indépendantes).
+→ Rapport : `phase4_mcp_bridge.md` ; transcript brut : `prototype/mcp/transcript.json`.
+
+**Suite :** test avec vrai client MCP externe, types riches via WIT, hôte wasmtime (Rust).
+
+---
+
+## Exp 006 — *(à venir)*
