@@ -143,10 +143,14 @@ switch (cmd) {
   }
 
   case "bench": {
-    const [name, itersRaw] = rest;
-    if (!name) die("usage : bench <plugin> [itérations]");
-    const iters = Number(itersRaw ?? 1000);
+    // usage : bench <plugin> <fn> <argsCSV|-> <itérations>
+    const [name, fn, argsCsv, itersRaw] = rest;
+    if (!name || !fn || argsCsv === undefined || itersRaw === undefined)
+      die("usage : bench <plugin> <fonction> <argsCSV|-> <itérations>");
+    const iters = Number(itersRaw);
+    const fnArgs = argsCsv === "-" ? [] : String(argsCsv).split(",").map(Number);
     const p = loadManifest(name);
+    if (!p.manifest.exports.includes(fn)) die(`${name} : fonction "${fn}" non déclarée dans le manifeste`);
     // démarrage à froid (aucun cache)
     const t0 = now();
     let loaded;
@@ -157,25 +161,32 @@ switch (cmd) {
     }
     const { instance, stats } = loaded;
     const coldLoad = now() - t0;
-    const fn = p.manifest.exports[0];
     const warm = instance.exports[fn];
     // échauffement
-    for (let i = 0; i < 100; i++) warm(1, 2);
+    for (let i = 0; i < 100; i++) warm(...fnArgs);
+    const tF = now();
+    const first = warm(...fnArgs);
+    const firstCall = now() - tF;
     const t1 = now();
-    for (let i = 0; i < iters; i++) warm(1, 2);
-    const perCall = (now() - t1) / iters;
+    for (let i = 0; i < iters; i++) warm(...fnArgs);
+    const compute = now() - t1;
+    const perCall = compute / iters;
     console.log(JSON.stringify({
       plugin: `${p.manifest.name}@${p.manifest.version}`,
+      call: fn, args: fnArgs, result: first,
       iterations: iters,
+      first_call_us: +(firstCall * 1000).toFixed(3),
       cold_load_ms: +coldLoad.toFixed(3),
       compile_ms: +stats.tCompile.toFixed(3),
       instantiate_ms: +stats.tInst.toFixed(3),
-      call_avg_ms: +perCall.toFixed(6),
+      compute_ms: +compute.toFixed(3),
+      per_call_ns: +(perCall * 1e6).toFixed(2),
       wasm_bytes: stats.bytes,
       memory_bytes: instance.exports.memory ? instance.exports.memory.buffer.byteLength : 0,
+      maxrss_kb: Math.round(process.resourceUsage().maxRSS),
       machine: process.platform + " " + process.arch + " node " + process.version,
       date: new Date().toISOString(),
-    }, null, 2));
+    }));
     break;
   }
 

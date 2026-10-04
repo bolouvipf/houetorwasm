@@ -105,4 +105,34 @@ hello@1.0.0  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune]
 
 ---
 
-## Exp 004 — *(à venir)*
+## Exp 004 — Comparatif §8 : natif / Python / JS / WASM (2026-10-04)
+
+**Contexte :** étude §8 « implémenter la même fonctionnalité en 4 langages et mesurer (§7) ».
+
+**Action :** installation **LLVM-MinGW 22.1.8** (`winget install MartinStorsjo.LLVM-MinGW.UCRT`) → compilateur C natif ; création de `prototype/bench/{fib.c,fib.py,fib.js,run_bench.mjs}` + signature `bench <plugin> <fn> <args> <iters>` étendue dans `host.mjs` ; 5 spawns par jambe, médiane.
+
+**Preuves brutes (sortie `node prototype\bench\run_bench.mjs`, 2026-10-04T06:45:19Z) :**
+
+| Implémentation | artefact (o) | wall end-to-end (ms) | 1er appel (µs) | par appel (ns) | RSS max (KB) | K |
+|---|---:|---:|---:|---:|---:|---:|
+| Natif (C, MinGW) | 88 064 | 209,37 | 0,2 | **19,2** | 3 660 | 10 M |
+| Python 3.14 | 1 735 | 802,05 | 11,1 | 5 718 | 16 232 | 100 k |
+| JavaScript (Node 24) | 991 | 284,41 | 92,8 | 112,3 | 40 980 | 1 M |
+| WASM plugin (HOUETOR) | **160** | 894,25 | 1,9 | **70,7** | 41 060 | 10 M |
+
+Chaque jambe renvoie `result: 1134903170` (fib(45), même valeur). WASM : `cold_load_ms: 4.207` (compile 1,551 + instantiate 0,244), `memory_bytes: 1048576`, `wasm_bytes: 160`.
+→ **Rapport complet** : `phase3_measures.md` ; données : `prototype/bench/results.json`.
+
+**Résultat :** WASM = **3,7× plus lent que le natif**, **1,6× plus rapide que le JS pur**, **81× plus rapide que Python**, avec l'artefact le plus petit (160 o) ; le RSS 41 MB est le coût du runtime hôte Node, pas du plugin.
+
+**3 bugs trouvés & corrigés pendant l'Exp 004 (preuves) :**
+1. **Dead code éliminé** : 1ère mesure native `compute_ms: 0.000` → le compilateur supprimait la boucle dont le résultat n'était pas lu → correctif `volatile long long sink` (+ observateur `if (sink == -1)`) → `compute_ms: 56.025` pour K=3 M (18,7 ns/appel, cohérent avec 45 itérations).
+2. **ctypes sans `argtypes`** : `maxrss_kb: 0` côté Python (pointeurs tronqués sur Win64) → `GetProcessMemoryInfo.argtypes/restype` explicites → `16232`.
+3. **K non injecté côté WASM** : `compute_ms: 0.04`, `per_call_ns: NaN` (placeholder `{K}` non remplacé → itérations `NaN`) → substitution `args.map(a => a==="{K}" ? k : a)` → `706.71 / 70.7`.
+4. Biais détecté : `fib` en **BigInt** pénalisait artificiellement JS (822 ns/appel) → bascule en `double` (fib(45) < 2^53, exact) → 112,3 ns/appel.
+
+**Suite :** jambe **wasmtime CLI** (isoler le RSS du runtime WASM sans Node) ; portabilité (rejouer `hello.wasm` sous wasmtime/Firefox) ; instrumenter install/mise à jour.
+
+---
+
+## Exp 005 — *(à venir)*
