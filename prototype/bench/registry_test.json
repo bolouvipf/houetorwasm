@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-04T11:56:11.246Z",
+  "date": "2026-10-04T12:07:03.055Z",
   "machine": "win32 x64 v24.15.0",
   "registry_layout": "<reg>/<nom>/<version>/{manifest.json,wasm}",
   "base_url": "http://127.0.0.1:<port>",
   "timings_ms": {
-    "install_v1": 422.9,
-    "install_v2": 354.2
+    "install_v1": 562.3,
+    "install_v2": 567.9
   },
   "checks": [
     {
@@ -31,12 +31,12 @@
     {
       "id": "R4 doublon refusé",
       "pass": true,
-      "detail": "[host] ERREUR : regprobe : version 1.0.1 déjà installée (incrémentez la version)"
+      "detail": "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 76"
     },
     {
       "id": "R5 manifeste corrompu refusé (rien installé)",
       "pass": true,
-      "detail": "[host] ERREUR : http://127.0.0.1:55594/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
+      "detail": "[host] ERREUR : http://127.0.0.1:54349/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
     },
     {
       "id": "R5 plugin courant intact",
@@ -46,7 +46,7 @@
     {
       "id": "R6 wasm 404 refusé, staging nettoyé",
       "pass": true,
-      "detail": "[host] ERREUR : install-url : wasm inaccessible (HTTP 404)"
+      "detail": "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 76"
     },
     {
       "id": "I1 distant sans sha256 refusé",

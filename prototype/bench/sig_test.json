@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-04T12:06:55.928Z",
+  "machine": "win32 x64 v24.15.0",
+  "scheme": "Ed25519, manifest.sig = {alg, sig:base64} signant les octets bruts de manifest.json ; confiance = HOUETOR_TRUST_KEYS (PEM)",
+  "checks": [
+    {
+      "id": "K1 host keygen ed25519",
+      "pass": true,
+      "detail": "[host] clé ed25519 générée : C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-sig-ZnUpmX\\keys\\priv.pem (privée, secrète) + C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-sig-ZnUpmX\\keys\\pub.pem (publique → HOUETOR_TRUST_KEYS)"
+    },
+    {
+      "id": "D1 distant sans manifest.sig refusé",
+      "pass": true,
+      "detail": "[host] ERREUR : install-url : manifest.sig absent/inaccessible (HTTP 404) — signature obligatoire à distance"
+    },
+    {
+      "id": "D2 install-url signé accepté",
+      "pass": true,
+      "detail": "[host] installé : sigprobe@1.0.0"
+    },
+    {
+      "id": "D2 appel fibonacci(10)=55 (sig + sha vérifiés)",
+      "pass": true,
+      "detail": "result=55"
+    },
+    {
+      "id": "D3 manifeste modifié après sig → INVALIDE",
+      "pass": true,
+      "detail": "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 76"
+    },
+    {
+      "id": "D4 clé étrangère → INVALIDE",
+      "pass": true,
+      "detail": "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 76"
+    },
+    {
+      "id": "L1 install local signé → OK",
+      "pass": true,
+      "detail": "[host] installé : sigprobe-local@1.0.0"
+    },
+    {
+      "id": "L2 install local sig invalide refusé",
+      "pass": true,
+      "detail": "[host] ERREUR : sigprobe-localbad (source) : signature Ed25519 INVALIDE (manifeste modifié ou clé non approuvée) — refusé"
+    },
+    {
+      "id": "A1 sans HOUETOR_TRUST_KEYS → refusé (ancrage manquant)",
+      "pass": true,
+      "detail": "[host] ERREUR : sigprobe : manifest.sig présent mais AUCUNE clé de confiance configurée (HOUETOR_TRUST_KEYS) — provenance non vérifiable"
+    },
+    {
+      "id": "C1 plugin sans sig (hello) → 5.5",
+      "pass": true,
+      "detail": "result=5.5"
+    },
+    {
+      "id": "nettoyage complet (témoin + staging)",
+      "pass": true,
+      "detail": "gone=true staging=false"
+    },
+    {
+      "id": "hello/needy intacts",
+      "pass": true,
+      "detail": "hello=true"
+    }
+  ],
+  "all_checks_pass": true
+}

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // HOUETOR Plugin Host — MVP (Phase 3)
 // Cycle de vie : discover -> validate manifest -> load (deny-by-default) -> call -> bench -> install -> remove -> registry
-// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry|hash> [...]
+// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry|hash|keygen|sign> [...]
+// Provenance (Exp 016) : HOUETOR_TRUST_KEYS = chemins de clés publiques PEM (séparées , ou ;) ;
 
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -18,6 +19,54 @@ const die = (msg, code = 1) => {
 };
 const now = () => performance.now();
 const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
+
+// --- Provenance Ed25519 (Exp 016) : clés de confiance + vérification de manifest.sig ---
+const TRUST_KEYS = (process.env.HOUETOR_TRUST_KEYS ?? "")
+  .split(/[,;]/)
+  .map((s) => s.trim())
+  .filter(Boolean);
+const SIG_PATH = (manifestDir) => path.join(manifestDir, "manifest.sig");
+
+function loadTrustKeys() {
+  if (!TRUST_KEYS.length) return [];
+  return TRUST_KEYS.map((p) => {
+    try {
+      return { path: p, key: crypto.createPublicKey(fs.readFileSync(p)) };
+    } catch (e) {
+      die(`HOUETOR_TRUST_KEYS : clé publique illisible (${p}) : ${e.message}`);
+    }
+  });
+}
+
+// Vérifie manifest.sig contre les clés de confiance. États : absent (null) / valide (true).
+// Meurt sur configuration dangereuse ou signature invalide.
+function verifySigData(data, sig, ctx) {
+  const trust = loadTrustKeys();
+  if (!trust.length)
+    die(`${ctx} : manifest.sig présent mais AUCUNE clé de confiance configurée (HOUETOR_TRUST_KEYS) — provenance non vérifiable`);
+  if (!sig || sig.alg !== "ed25519" || typeof sig.sig !== "string") die(`${ctx} : manifest.sig invalide (alg/sig manquants)`);
+  const ok = trust.some((t) => {
+    try {
+      return crypto.verify(null, data, t.key, Buffer.from(sig.sig, "base64"));
+    } catch {
+      return false;
+    }
+  });
+  if (!ok) die(`${ctx} : signature Ed25519 INVALIDE (manifeste modifié ou clé non approuvée) — refusé`);
+  return true;
+}
+
+function verifySig(manifestDir, ctx) {
+  const sigFile = SIG_PATH(manifestDir);
+  if (!fs.existsSync(sigFile)) return null;
+  let sig;
+  try {
+    sig = JSON.parse(fs.readFileSync(sigFile, "utf8"));
+  } catch (e) {
+    die(`${ctx} : manifest.sig illisible (${e.message})`);
+  }
+  return verifySigData(fs.readFileSync(path.join(manifestDir, "manifest.json")), sig, ctx);
+}
 
 function discover() {
   if (!fs.existsSync(PLUGINS)) return [];
@@ -47,6 +96,8 @@ function loadManifest(dirName) {
     die(`${dirName} : permissions NON accordées par l'hôte : ${illegal.join(", ")}`);
   const wasmPath = path.join(dir, raw.wasm);
   if (!fs.existsSync(wasmPath)) die(`${dirName} : fichier wasm manquant : ${raw.wasm}`);
+  // provenance (Exp 016) : manifest.signé → vérification obligatoire si présent
+  verifySig(dir, dirName);
   // intégrité (Exp 014) : si le manifeste épingle sha256, tout écart = refus
   if (raw.sha256 !== undefined) {
     const actual = sha256(fs.readFileSync(wasmPath));
@@ -254,6 +305,8 @@ switch (cmd) {
     const src = rest[0];
     if (!src) die("usage : install <dossier-plugin>");
     const srcManifest = JSON.parse(fs.readFileSync(path.join(src, "manifest.json"), "utf8"));
+    // provenance AVANT copie (Exp 016)
+    verifySig(src, `${srcManifest.name} (source)`);
     // intégrité AVANT copie (Exp 014) : un src altéré n'entre jamais dans plugins/
     if (srcManifest.sha256 !== undefined) {
       const wasmSrc = path.join(src, srcManifest.wasm);
@@ -271,10 +324,12 @@ switch (cmd) {
     const base = rest[0];
     if (!base) die("usage : install-url <baseURL>   (ex. http://127.0.0.1:5099/regprobe/1.0.1)");
     let manifest;
+    let manifestText;
     try {
       const res = await fetch(new URL("manifest.json", base));
       if (!res.ok) die(`install-url : manifest.json inaccessible (HTTP ${res.status})`);
-      manifest = await res.json();
+      manifestText = await res.text();
+      manifest = JSON.parse(manifestText);
     } catch (e) {
       die(`install-url : échec du téléchargement du manifeste (${e.message})`);
     }
@@ -282,6 +337,17 @@ switch (cmd) {
     // Exp 014 : le contenu DISTANT doit être épinglé — sha256 obligatoire
     if (manifest.sha256 === undefined)
       die(`install-url : champ "sha256" obligatoire pour une source distante (épinglage du contenu)`);
+    // Exp 016 : la provenance DISTANTE doit être signée — manifest.sig obligatoire
+    let sigObj;
+    try {
+      const sigRes = await fetch(new URL("manifest.sig", base));
+      if (!sigRes.ok) die(`install-url : manifest.sig absent/inaccessible (HTTP ${sigRes.status}) — signature obligatoire à distance`);
+      sigObj = await sigRes.json();
+    } catch (e) {
+      if (String(e.message).includes("HTTP")) die(e.message);
+      die(`install-url : manifest.sig illisible (${e.message})`);
+    }
+    verifySigData(Buffer.from(manifestText), sigObj, `${base} (signature distante)`);
     // doublon testé AVANT staging : die() ne déclenche pas de cleanup
     const destCheck = path.join(PLUGINS, manifest.name);
     if (fs.existsSync(destCheck)) {
@@ -315,7 +381,9 @@ switch (cmd) {
     const wasmDest = path.join(staging, String(manifest.wasm));
     fs.mkdirSync(path.dirname(wasmDest), { recursive: true });
     fs.writeFileSync(wasmDest, received);
-    fs.writeFileSync(path.join(staging, "manifest.json"), JSON.stringify(manifest, null, 2));
+    // OCTETS BRUTS : la signature porte sur manifest.json reçu tel quel (re-serialiser casserait le lien)
+    fs.writeFileSync(path.join(staging, "manifest.json"), manifestText);
+    fs.writeFileSync(path.join(staging, "manifest.sig"), JSON.stringify(sigObj, null, 2) + "\n");
     doInstall(staging, manifest);
     fs.rmSync(staging, { recursive: true, force: true });
     break;
@@ -364,6 +432,36 @@ switch (cmd) {
     break;
   }
 
+  case "keygen": {
+    // Exp 016 : paire Ed25519 pour signer/contrôler les manifestes (clé privée = secrète)
+    const [privPath, pubPath] = rest;
+    if (!privPath) die("usage : keygen <clé-privée.pem> [clé-publique.pem]");
+    const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+    fs.writeFileSync(privPath, privateKey.export({ type: "pkcs8", format: "pem" }));
+    const pubOut = pubPath ?? privPath.replace(/(\.pem)?$/i, ".pub$1");
+    fs.writeFileSync(pubOut, publicKey.export({ type: "spki", format: "pem" }));
+    console.log(`[host] clé ed25519 générée : ${privPath} (privée, secrète) + ${pubOut} (publique → HOUETOR_TRUST_KEYS)`);
+    break;
+  }
+
+  case "sign": {
+    // Exp 016 : signe manifest.json (octets bruts) → manifest.sig
+    const [dir, privKeyPath] = rest;
+    if (!dir || !privKeyPath) die("usage : sign <dossier-plugin> <clé-privée.pem>");
+    const mPath = path.join(dir, "manifest.json");
+    if (!fs.existsSync(mPath)) die(`${dir} : manifest.json introuvable`);
+    let priv;
+    try {
+      priv = crypto.createPrivateKey(fs.readFileSync(privKeyPath));
+    } catch (e) {
+      die(`clé privée illisible (${privKeyPath}) : ${e.message}`);
+    }
+    const sig = crypto.sign(null, fs.readFileSync(mPath), priv);
+    fs.writeFileSync(path.join(dir, "manifest.sig"), JSON.stringify({ alg: "ed25519", sig: sig.toString("base64") }, null, 2) + "\n");
+    console.log(`[host] signé (ed25519) : ${path.join(dir, "manifest.sig")}`);
+    break;
+  }
+
   default:
-    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry|hash> [args...]");
+    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry|hash|keygen|sign> [args...]");
 }

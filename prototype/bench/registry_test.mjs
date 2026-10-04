@@ -1,5 +1,7 @@
 ﻿// Exp 013+014 — Distribution : registre local (découverte) + installation depuis HTTP + épinglage sha256.
-// Layout registre : <reg>/<nom>/<version>/{manifest.json,wasm}
+// NB Exp 016 : install-url exige désormais manifest.sig (Ed25519) + HOUETOR_TRUST_KEYS ;
+// le test génère une paire éphémère et signe toutes les variantes valides du registre.
+// Layout registre : <reg>/<nom>/<version>/{manifest.json,manifest.sig,wasm}
 // Scénarios (tests fonctionnels, durée ms reportée) :
 //  R1  host registry <reg>          → liste regprobe@1.0.0 et @1.0.1
 //  R2  install-url (HTTP) v1.0.0    → installé + appel fonctionnel (fibonacci(10)=55)
@@ -30,6 +32,18 @@ const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
 const HELLO_SHA = sha256(fs.readFileSync(HELLO_WASM));
 
 const REG = fs.mkdtempSync(path.join(os.tmpdir(), 'houetor-reg-'));
+const KEYS = fs.mkdtempSync(path.join(os.tmpdir(), 'houetor-keys-'));
+const PRIV = path.join(KEYS, 'priv.pem');
+const PUB = path.join(KEYS, 'pub.pem');
+{
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  fs.writeFileSync(PRIV, privateKey.export({ type: 'pkcs8', format: 'pem' }));
+  fs.writeFileSync(PUB, publicKey.export({ type: 'spki', format: 'pem' }));
+}
+const signManifest = (dir) => {
+  const sig = crypto.sign(null, fs.readFileSync(path.join(dir, 'manifest.json')), crypto.createPrivateKey(fs.readFileSync(PRIV)));
+  fs.writeFileSync(path.join(dir, 'manifest.sig'), JSON.stringify({ alg: 'ed25519', sig: sig.toString('base64') }, null, 2) + '\n');
+};
 const checks = [];
 const timings = {};
 let allOk = true;
@@ -40,10 +54,14 @@ const note = (id, pass, detail) => {
 
 // NB : spawn ASYNCHRONE — spawnSync bloquerait la boucle d'événements et le
 // serveur HTTP local (même process) provoquerait un deadlock.
+// HOUETOR_TRUST_KEYS systématique : les manifestes signés exigent l'ancrage (Exp 016).
 const hostCmd = (...args) =>
   new Promise((resolve) => {
     const t0 = process.hrtime.bigint();
-    const ch = spawn(process.execPath, [HOST, ...args], { windowsHide: true });
+    const ch = spawn(process.execPath, [HOST, ...args], {
+      windowsHide: true,
+      env: { ...process.env, HOUETOR_TRUST_KEYS: PUB },
+    });
     let out = '';
     ch.stdout.on('data', (d) => (out += d));
     ch.stderr.on('data', (d) => (out += d));
@@ -61,32 +79,36 @@ const manifest = (version, { sha, name = NAME } = {}) => ({
   ...(sha !== undefined && { sha256: sha }),
 });
 
-// --- construction du registre local ---
+// --- construction du registre local (chaque variante valide est signée Ed25519) ---
 for (const v of ['1.0.0', '1.0.1']) {
   const dir = path.join(REG, NAME, v);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest(v, { sha: HELLO_SHA }), null, 2));
   fs.copyFileSync(HELLO_WASM, path.join(dir, `${NAME}.wasm`));
+  signManifest(dir);
 }
 // variante corrompue (exports manquant) — test R5 (name volontairement = NAME pour prouver qu'il n'écrase rien)
 const corruptDir = path.join(REG, `${NAME}-corrupt`, '9.9.9');
 fs.mkdirSync(corruptDir, { recursive: true });
 fs.writeFileSync(path.join(corruptDir, 'manifest.json'), JSON.stringify({ name: NAME, version: '9.9.9', wasm: 'x.wasm' }));
 fs.copyFileSync(HELLO_WASM, path.join(corruptDir, 'x.wasm'));
-// variante 404 (manifeste ok + sha256 valide, wasm absent) — test R6
+// variante 404 (manifeste ok + sha256 valide + sig, wasm absent) — test R6
 const notfoundDir = path.join(REG, `${NAME}-404`, '1.0.0');
 fs.mkdirSync(notfoundDir, { recursive: true });
-fs.writeFileSync(path.join(notfoundDir, 'manifest.json'), JSON.stringify(manifest('1.0.0', { sha: HELLO_SHA, name: `${NAME}-404` })));
+fs.writeFileSync(path.join(notfoundDir, 'manifest.json'), JSON.stringify(manifest('1.0.0', { sha: HELLO_SHA, name: `${NAME}-404` }), null, 2));
+signManifest(notfoundDir);
 // variante sans sha256 — test I1 (épinglage obligatoire pour une source distante)
 const noshaDir = path.join(REG, `${NAME}-nosha`, '1.0.0');
 fs.mkdirSync(noshaDir, { recursive: true });
 fs.writeFileSync(path.join(noshaDir, 'manifest.json'), JSON.stringify(manifest('1.0.0', { name: `${NAME}-nosha` }), null, 2));
 fs.copyFileSync(HELLO_WASM, path.join(noshaDir, `${NAME}.wasm`));
+signManifest(noshaDir);
 // variante sha256 faux — test I3 (contenu altéré côté distant)
 const badshaDir = path.join(REG, `${NAME}-badsha`, '1.0.0');
 fs.mkdirSync(badshaDir, { recursive: true });
 fs.writeFileSync(path.join(badshaDir, 'manifest.json'), JSON.stringify(manifest('1.0.0', { sha: '0'.repeat(64), name: `${NAME}-badsha` }), null, 2));
 fs.copyFileSync(HELLO_WASM, path.join(badshaDir, `${NAME}.wasm`));
+signManifest(badshaDir);
 
 // --- serveur HTTP local = « registre distant » ---
 const server = http.createServer((req, res) => {
@@ -212,6 +234,7 @@ await hostCmd('remove', NAME);
 
 server.close();
 fs.rmSync(REG, { recursive: true, force: true });
+fs.rmSync(KEYS, { recursive: true, force: true });
 
 const out = {
   date: new Date().toISOString(),

@@ -496,3 +496,41 @@ Régression : `test_bridge.mjs` → **8/8 inchangé** (mode open par défaut).
 **Limite honnête :** policy statique (fichier), noms exacts (pas de motifs `*`), pas de scope par agent/session ; mode open = démo (à inverser en production).
 
 **Suite :** client MCP tiers réel (inspector/Claude Desktop), WIT (types riches), signature asymétrique, WASI réseau.
+
+---
+
+## Exp 016 — Provenance Ed25519 : signature des manifestes + clés de confiance (2026-10-04)
+
+**Contexte :** Exp 014 a montré que le sha256 est une **intégrité optimiste** : un registre compromis fournit aussi un manifeste falsifié avec la bonne empreinte. La suite logique (limite documentée Exp 014) = signature asymétrique pour ancrer la confiance hors du registre.
+
+**Action :**
+- `host.mjs` : **`keygen <priv> [pub]`** (Ed25519), **`sign <dossier> <priv>`** → `manifest.sig` (`{alg:"ed25519", sig:base64}` signant les **octets bruts** de `manifest.json`) ; variable **`HOUETOR_TRUST_KEYS`** = clé(s) publique(s) PEM de confiance (`path.delimiter`/virgule) ; vérification à chaque `loadManifest` si `manifest.sig` présent, **avant copie** pour `install`, **obligatoire à distance** pour `install-url` (sig sur le texte reçu, octets bruts conservés dans le staging) ;
+- `sig_test.mjs` (12 checks) + `registry_test.mjs` adapté (paires éphémères signées pour toutes les variantes valides).
+
+**Preuves brutes** (`sig_test.json`, `all_checks_pass: true`, **12/12**) :
+
+```text
+✅ K1 host keygen ed25519 — priv.pem (PRIVATE KEY) + pub.pem (PUBLIC KEY)
+✅ D1 distant sans manifest.sig refusé — install-url : manifest.sig absent/inaccessible (HTTP 404) — signature obligatoire à distance
+✅ D2 install-url signé accepté — [host] installé : sigprobe@1.0.0
+✅ D2 appel fibonacci(10)=55 (sig + sha vérifiés) — result=55
+✅ D3 manifeste modifié après sig → INVALIDE
+✅ D4 clé étrangère → INVALIDE
+✅ L1 install local signé → OK
+✅ L2 install local sig invalide refusé — signature Ed25519 INVALIDE (manifeste modifié ou clé non approuvée)
+✅ A1 sans HOUETOR_TRUST_KEYS → refusé (ancrage manquant) — manifest.sig présent mais AUCUNE clé de confiance configurée
+✅ C1 plugin sans sig (hello) → 5.5
+✅ nettoyage complet + hello/needy intacts
+```
+
+Régressions : `registry_test` **15/15**, `test_bridge` **8/8**, `lifecycle` tous checks verts.
+
+**Résultat :**
+- **Chaîne de confiance complète** : `clé privée → manifest.sig → manifeste (octets bruts) → sha256 → octets wasm` — modifier le manifeste *ou* le registre entier ne suffit plus sans la clé privée ;
+- **Ancrage explicite** : sans `HOUETOR_TRUST_KEYS`, un plugin signé est **refusé** (fail loud — la signature de l'auteur impose la vérification, jamais le silence) ; plugin sans signature = comportement historique (compat) ;
+- `install-url` exige désormais **sha256 + manifest.sig** : « confiance à distance » = empreinte *et* provenance ;
+- zéro dépendance (`node:crypto`), hôte toujours ~400 lignes.
+
+**Limite honnête :** distribution des clés de confiance = **humaine** (pas de PKI/web-of-trust/TOFU) ; la signature est celle du *manifeste*, pas d'un audit du contenu ; bruit cosmétique connu Node/Windows (`Assertion failed: UV_HANDLE_CLOSING` en stderr sur certains `die()` pendant une session HTTP — code de sortie et contrôles corrects).
+
+**Suite :** WASI réseau, WIT, client MCP tiers, éventuellement hôte wasmtime Rust.

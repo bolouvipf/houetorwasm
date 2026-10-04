@@ -98,7 +98,9 @@ Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (upda
 | Wasm **altéré après install** (1 octet flip) | ✅ refusé à l'exécution | `sha256 INCONGRU (manifeste 55bd…, fichier 58fe…)` |
 | Plugin local **sans** sha256 (compat) | ✅ chargeable | `hello 2+3.5=5.5` |
 
-**Lecture** : la couche distribution/découverte (lacune Q4) se comble en ~80 lignes au-dessus du manifeste existant, et l'intégrité en ~30 de plus (`node:crypto`, 0 dépendance) — mais tout reste **maison** : pas de standard de registre, sha256 = intégrité optimiste (registre compromis = manifeste compromis), signature asymétrique = suite (limite notée Exp 013-014).
+**Provenance (Exp 016)** : `keygen`/`sign` produisent `manifest.sig` (Ed25519 sur les **octets bruts** de `manifest.json`) ; confiance = `HOUETOR_TRUST_KEYS` (PEM). `install-url` exige désormais **sha256 + manifest.sig** ; un plugin signé **sans clé de confiance configurée est refusé** (fail loud). `sig_test.json` → **12/12** (clé étrangère refusée, manifeste retouché après signature refusé, sig absent à distance refusé, plugin sans sig = compat). Chaîne : `clé privée → manifeste → sha256 → octets wasm`.
+
+**Lecture** : la couche distribution/découverte (lacune Q4) se comble en ~80 lignes au-dessus du manifeste existant, l'intégrité en ~30 (`node:crypto`, 0 dépendance) et la provenance en ~60 de plus — mais tout reste **maison** : pas de standard de registre, distribution des clés de confiance = humaine (pas de PKI), signature du manifeste ≠ audit du contenu (limites notées Exp 013-016).
 
 ## 4. Lecture par critère (étude §7)
 
@@ -170,8 +172,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\portability_
 # 7. Capabilities fichier WASI (Exp 011-012) : lecture+écriture, grant/escape/ro/nogrant → wasi_caps.json / wasi_write.json
 #    (modules : cargo build --release --target wasm32-wasip1 --manifest-path prototype\samples\filecap\Cargo.toml)
 
-# 8. Distribution + intégrité (Exp 013-014) : registre + install-url + épinglage sha256 (15/15) → registry_test.json
+# 8. Distribution + intégrité + provenance (Exp 013-016) : registre + install-url + sha256 + Ed25519 → registry_test.json (15/15) + sig_test.json (12/12)
 node "prototype\bench\registry_test.mjs"
+node "prototype\bench\sig_test.mjs"
 node prototype\bench\wasi_caps.mjs
 node prototype\bench\wasi_write.mjs
 ```

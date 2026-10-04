@@ -36,7 +36,7 @@
 
 Liste établie par preuves (Phase 1 §8 + Phase 2 synthèse) :
 1. **Contrat sémantique fragmenté** : ≥ 8 ABI/IDL hétérogènes (proxy-wasm, ROW_DIRECT, dlopen signé, NaN-boxing, WIT, WASI, host functions…).
-2. **Découverte/distribution** : aucun registre/manifeste standard (nous en avons inventé un — manifeste + registre HTTP + épinglage sha256, Exp 013-014, 15/15 checks — preuve que le standard manque autant que sa facilité d'invention ; reste la signature asymétrique).
+2. **Découverte/distribution** : aucun registre/manifeste standard (nous en avons inventé un — manifeste + registre HTTP + épinglage sha256 + signature Ed25519, Exp 013-016, 15/15 + 12/12 checks — preuve que le standard manque autant que sa facilité d'invention ; reste à industrialiser : ancre de confiance partagée, standard de registre).
 3. **Permissions** : WASI fournit déjà les capabilities **système** — prouvées ici en lecture **et écriture** (Exp 011-012 : accord = lecture/écriture OK, évasion `../` refusée sur 3 moteurs, aucun accord = refus, preopen `ro` bloquant l'écriture chez wazero) ; il manque le niveau **applicatif** standard (« plugin demande, hôte accorde ») : notre manifeste + `HOST_ALLOWED` est encore maison. Limite : les CLI wasmtime 49 et node:wasi n'exposent pas le preopen read-only.
 4. **Maturité WASI/CM** : async livré 2026-06, threads absents, 1.0 pas encore là.
 5. **Adoption réelle** : 0,35 % des sites ; Docker Wasm abandonné 🔴 ; APISIX WASM gelé 🟡 ; runwasi encore non-core.

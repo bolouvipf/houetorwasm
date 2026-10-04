@@ -14,7 +14,8 @@
    - **Cycle de vie chronométré ✅** (Exp 008) : install **18,5 ms**, update **24,7 ms**, remove **14,2 ms** fs net (baseline spawn Node 73,3 ms ; doublon refusé, `hello` intact) → `lifecycle.json`.
    - **Capabilities fichier WASI ✅** (Exp 011+012) : lecture ET écriture — accord → `ok`, évasion `data/../` → refusée (3 moteurs : os 63/63/76), aucun accord → refus, preopen `ro` → écriture bloquée (wazero), `evil.txt` jamais créé ; **21 checks + 2 n/a** (`wasi_caps.json` + `wasi_write.json`, modules `prototype/samples/filecap`).
    - **Distribution ✅** (Exp 013) : commandes `registry` (découverte layout `<reg>/<nom>/<version>`) + `install-url` (fetch HTTP → staging → validation → install versionnée) ; serveur HTTP local = registre distant ; **11/11 checks** (doublon/corruption/404 refusés proprement, `.history` archivé), install **224 ms** → `registry_test.json` ; lacune Q4 « distribution » comblée côté prototype (standard mondial toujours absent).
-   - **Intégrité ✅** (Exp 014) : épinglage **sha256** du wasm au manifeste — obligatoire pour `install-url`, vérifié à chaque chargement + avant copie locale ; commande `hash` ; **15/15 checks** (distant sans sha refusé, fausse empreinte refusée, altération post-install détectée à l'exécution, plugins sans sha compat) → `registry_test.json` ; `node:crypto` = 0 dépendance. **Limite** : sha256 = intégrité optimiste (registre compromis = manifeste compromis) → signature asymétrique = suite.
+   - **Intégrité ✅** (Exp 014) : épinglage **sha256** du wasm au manifeste — obligatoire pour `install-url`, vérifié à chaque chargement + avant copie locale ; commande `hash` ; **15/15 checks** (distant sans sha refusé, fausse empreinte refusée, altération post-install détectée à l'exécution, plugins sans sha compat) → `registry_test.json` ; `node:crypto` = 0 dépendance.
+   - **Provenance ✅** (Exp 016) : signature **Ed25519** des manifestes (`keygen`/`sign` → `manifest.sig`), confiance = `HOUETOR_TRUST_KEYS` (PEM), `install-url` exige **sha256 + sig** sur octets bruts, sig présent sans clé = **refus explicite** ; **12/12 checks** (`sig_test.json`) + régressions 15/15/8/8 verts. **Limite** : distribution des clés = humaine (pas de PKI) ; bruit cosmétique Node/Windows `UV_HANDLE_CLOSING` (stderr, sans impact).
 4. **Phase 4 — Pont MCP** → `prototype/mcp/bridge.mjs` + `phase4_mcp_bridge.md`.
    - **8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** ; défense en profondeur (outil exposé, appel refusé par sandbox).
    - **9/9 policy** (Exp 015) : filtrage allow/deny via `HOUETOR_MCP_POLICY` (deny prime, hors-allow refusé **avant** le host, policy cassée = **fail-closed**, sans variable = rétrocompat) → `policy_test.json` — **3ᵉ barrière** (bridge → policy → host).
@@ -29,14 +30,14 @@
 2. Client MCP tiers réel « inspector »/Claude Desktop (le filtrage policy est fait — Exp 015 ; le test actuel *est* déjà un client JSON-RPC externe spawn stdio) ; reste l'interconnexion avec un vrai client tiers.
 3. Workload non compute-bound (strings/mémoire) + charge de fichiers WASI réelle ; portabilité macOS/navigateur.
 4. Instruments de dépendances (WIT/composants). ~~Chargement distant~~ : **FAIT (Exp 013-014)**.
-5. **Signature asymétrique/provenance des plugins** (au-delà du sha256, Exp 014), hôte wasmtime en Rust ; ~~chargement distant~~ = FAIT (Exp 013-014).
+5. Éventuellement : hôte wasmtime en Rust. ~~Chargement distant / signature~~ : **FAIT (Exp 013-016)**.
 
 ## Point de reprise exact
 
 > Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012), **distribution ✅ registre/HTTP** (Exp 013). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
 > Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
-> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 015**) → `conclusion.md`.
-> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `node prototype\mcp\policy_test.mjs` (9/9) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) (tout vert).
+> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 016**) → `conclusion.md`.
+> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `node prototype\mcp\policy_test.mjs` (9/9) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) + `node prototype\bench\sig_test.mjs` (12/12) (tout vert).
 
 ## Décisions de session
 
@@ -52,3 +53,4 @@
 - `prototype/plugins/hello/target/` : build résiduel (ignoré par git).
 - `prototype/samples/{hello-v2,needy}/` : sources servant à `install` (needy : `-C link-arg=--allow-undefined` requis).
 - `needy` reste installé (utile pour retester la défense en profondeur ; retirer avec `host.mjs remove needy`).
+- Bruit cosmétique Node/Windows : `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` en stderr lors de certains `die()` pendant une session HTTP (Exp 013-016) — code de sortie et messages d'erreur corrects, tous checks verts ; sans impact fonctionnel.
