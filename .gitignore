@@ -1,0 +1,22 @@
+# .gitignore — dossier d'étude WASM WASI
+
+# Secrets / environnement
+.env
+.env.*
+*.key
+*.pem
+
+# OS / éditeur
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Futurs artefacts Phase 3 (prototype HOUETOR Plugin Host)
+target/
+node_modules/
+__pycache__/
+*.wat.lock
