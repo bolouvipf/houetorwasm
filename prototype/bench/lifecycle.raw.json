@@ -1,0 +1,117 @@
+[
+  {
+    "cycle": 1,
+    "install": {
+      "ms": 129.5946,
+      "status": 0,
+      "out": "[host] installé : lifecycleprobe@1.0.0"
+    },
+    "install_dup": {
+      "ms": 84.9865,
+      "status": 1,
+      "out": "[host] ERREUR : lifecycleprobe : version 1.0.0 déjà installée (incrémentez la version)"
+    },
+    "update": {
+      "ms": 98.8275,
+      "status": 0,
+      "out": "[host] version précédente 1.0.0 archivée → ..\\plugins\\lifecycleprobe\\.history\\1.0.0\n[host] installé : lifecycleprobe@1.0.1"
+    },
+    "remove": {
+      "ms": 79.1485,
+      "status": 0,
+      "out": "[host] retiré : lifecycleprobe (plus aucun fichier, plus aucune instance)"
+    }
+  },
+  {
+    "cycle": 2,
+    "install": {
+      "ms": 91.7836,
+      "status": 0,
+      "out": "[host] installé : lifecycleprobe@1.0.0"
+    },
+    "install_dup": {
+      "ms": 81.141,
+      "status": 1,
+      "out": "[host] ERREUR : lifecycleprobe : version 1.0.0 déjà installée (incrémentez la version)"
+    },
+    "update": {
+      "ms": 96.9584,
+      "status": 0,
+      "out": "[host] version précédente 1.0.0 archivée → ..\\plugins\\lifecycleprobe\\.history\\1.0.0\n[host] installé : lifecycleprobe@1.0.1"
+    },
+    "remove": {
+      "ms": 78.058,
+      "status": 0,
+      "out": "[host] retiré : lifecycleprobe (plus aucun fichier, plus aucune instance)"
+    }
+  },
+  {
+    "cycle": 3,
+    "install": {
+      "ms": 91.7201,
+      "status": 0,
+      "out": "[host] installé : lifecycleprobe@1.0.0"
+    },
+    "install_dup": {
+      "ms": 86.7051,
+      "status": 1,
+      "out": "[host] ERREUR : lifecycleprobe : version 1.0.0 déjà installée (incrémentez la version)"
+    },
+    "update": {
+      "ms": 97.9671,
+      "status": 0,
+      "out": "[host] version précédente 1.0.0 archivée → ..\\plugins\\lifecycleprobe\\.history\\1.0.0\n[host] installé : lifecycleprobe@1.0.1"
+    },
+    "remove": {
+      "ms": 88.4463,
+      "status": 0,
+      "out": "[host] retiré : lifecycleprobe (plus aucun fichier, plus aucune instance)"
+    }
+  },
+  {
+    "cycle": 4,
+    "install": {
+      "ms": 88.8333,
+      "status": 0,
+      "out": "[host] installé : lifecycleprobe@1.0.0"
+    },
+    "install_dup": {
+      "ms": 78.54,
+      "status": 1,
+      "out": "[host] ERREUR : lifecycleprobe : version 1.0.0 déjà installée (incrémentez la version)"
+    },
+    "update": {
+      "ms": 100.2301,
+      "status": 0,
+      "out": "[host] version précédente 1.0.0 archivée → ..\\plugins\\lifecycleprobe\\.history\\1.0.0\n[host] installé : lifecycleprobe@1.0.1"
+    },
+    "remove": {
+      "ms": 87.5032,
+      "status": 0,
+      "out": "[host] retiré : lifecycleprobe (plus aucun fichier, plus aucune instance)"
+    }
+  },
+  {
+    "cycle": 5,
+    "install": {
+      "ms": 105.5627,
+      "status": 0,
+      "out": "[host] installé : lifecycleprobe@1.0.0"
+    },
+    "install_dup": {
+      "ms": 79.8492,
+      "status": 1,
+      "out": "[host] ERREUR : lifecycleprobe : version 1.0.0 déjà installée (incrémentez la version)"
+    },
+    "update": {
+      "ms": 92.1698,
+      "status": 0,
+      "out": "[host] version précédente 1.0.0 archivée → ..\\plugins\\lifecycleprobe\\.history\\1.0.0\n[host] installé : lifecycleprobe@1.0.1"
+    },
+    "remove": {
+      "ms": 108.8471,
+      "status": 0,
+      "out": "[host] retiré : lifecycleprobe (plus aucun fichier, plus aucune instance)"
+    }
+  }
+]

@@ -174,7 +174,7 @@
         "content": [
           {
             "type": "text",
-            "text": "{\n  \"plugin\": \"hello@1.0.1\",\n  \"call\": \"add\",\n  \"args\": [\n    \"2\",\n    \"3.5\"\n  ],\n  \"result\": 5.5,\n  \"timings_ms\": {\n    \"load\": 1.961,\n    \"compile\": 1.033,\n    \"instantiate\": 0.186,\n    \"call\": 0.2801\n  },\n  \"wasm_bytes\": 160,\n  \"memory_bytes\": 1048576,\n  \"imports_granted\": 0\n}"
+            "text": "{\n  \"plugin\": \"hello@1.0.1\",\n  \"call\": \"add\",\n  \"args\": [\n    \"2\",\n    \"3.5\"\n  ],\n  \"result\": 5.5,\n  \"timings_ms\": {\n    \"load\": 1.309,\n    \"compile\": 0.651,\n    \"instantiate\": 0.122,\n    \"call\": 0.1982\n  },\n  \"wasm_bytes\": 160,\n  \"memory_bytes\": 1048576,\n  \"imports_granted\": 0\n}"
           }
         ]
       }

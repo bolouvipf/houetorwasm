@@ -9,13 +9,16 @@ $N = 45
 $wasmtime = (Get-ChildItem "$env:USERPROFILE\.local\bin" -Directory -Filter "wasmtime*" |
     ForEach-Object { Join-Path $_.FullName "wasmtime.exe" } |
     Where-Object { Test-Path $_ } | Select-Object -First 1)
+$wazeroCand = @((Join-Path $env:TEMP "opencode\wazero\wazero.exe"), "wazero.exe")
+$wazero = ($wazeroCand | Where-Object { $_ -eq "wazero.exe" -or (Test-Path $_) } | Select-Object -First 1)
 
 $variants = @(
     @{ id = "natif-c"; label = "Natif (C)"; cmd = "$here\fib_native.exe"; args = @() },
     @{ id = "python"; label = "Python 3.14"; cmd = "python"; args = @("$here\fib.py") },
     @{ id = "javascript-node"; label = "JavaScript (Node)"; cmd = "node"; args = @("$here\fib.js") },
     @{ id = "wasm-houetor"; label = "WASM plugin (host Node)"; cmd = "node"; args = @("$here\..\host\host.mjs", "bench", "hello", "fibonacci", "$N", "$K") },
-    @{ id = "wasm-wasmtime"; label = "WASM commande (wasmtime)"; cmd = $wasmtime; args = @("run", "$here\fib_wasi\target\wasm32-wasip2\release\fib-wasi.wasm", "$K", "$N") }
+    @{ id = "wasm-wasmtime"; label = "WASM commande (wasmtime)"; cmd = $wasmtime; args = @("run", "$here\fib_wasi\target\wasm32-wasip2\release\fib-wasi.wasm", "$K", "$N") },
+    @{ id = "wasm-wazero"; label = "WASM commande (wazero)"; cmd = $wazero; args = @("run", "$here\fib_wasi\target\wasm32-wasip1\release\fib-wasi.wasm", "$K", "$N") }
 )
 
 $env:BENCH_K = "$K"

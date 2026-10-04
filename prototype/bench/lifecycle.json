@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-04T10:46:44.018Z",
+  "machine": "win32 x64 v24.15.0",
+  "cycles": 5,
+  "baseline_spawn_ms": 73.3,
+  "note": "net_ms = médiane wall moins baseline spawn node (opérations fs locales)",
+  "results": {
+    "install": {
+      "wall_ms": 91.8,
+      "net_ms": 18.5
+    },
+    "install_dup": {
+      "wall_ms": 81.1,
+      "net_ms": 7.9
+    },
+    "update": {
+      "wall_ms": 98,
+      "net_ms": 24.7
+    },
+    "remove": {
+      "wall_ms": 87.5,
+      "net_ms": 14.2
+    }
+  },
+  "checks": {
+    "dup_refused": true,
+    "update_ok": true,
+    "remove_ok": true,
+    "probe_gone": true,
+    "hello_intact": true
+  }
+}

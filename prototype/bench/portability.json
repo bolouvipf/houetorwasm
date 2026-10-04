@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-04T10:28:03.293Z",
+  "machine": "win32 x64 v24.15.0",
+  "workload": "fib(45) x 10000000 appels (médiane de 5 exécutions), même binaire WASM",
+  "expected_result": "1134903170",
+  "all_runtimes_agree": true,
+  "results": [
+    {
+      "id": "wasmtime-p2",
+      "label": "wasmtime 49 (Cranelift) — composant WASI p2",
+      "runs": 5,
+      "k": 10000000,
+      "n": 45,
+      "status": "ok",
+      "result": "1134903170",
+      "per_call_ns": 17.1,
+      "first_call_us": 7.9
+    },
+    {
+      "id": "wasmtime-p1",
+      "label": "wasmtime 49 (Cranelift) — module WASI p1",
+      "runs": 5,
+      "k": 10000000,
+      "n": 45,
+      "status": "ok",
+      "result": "1134903170",
+      "per_call_ns": 21.7,
+      "first_call_us": 4.6
+    },
+    {
+      "id": "wazero-p1",
+      "label": "wazero 1.12 (moteur Go) — module WASI p1",
+      "runs": 5,
+      "k": 10000000,
+      "n": 45,
+      "status": "ok",
+      "result": "1134903170",
+      "per_call_ns": 44,
+      "first_call_us": 2.2
+    },
+    {
+      "id": "node-wasi-p1",
+      "label": "node:wasi (V8) — module WASI p1",
+      "runs": 5,
+      "k": 10000000,
+      "n": 45,
+      "status": "ok",
+      "result": "1134903170",
+      "per_call_ns": 52.6,
+      "first_call_us": 1.5
+    }
+  ]
+}

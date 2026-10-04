@@ -1,59 +1,70 @@
 ﻿{
-    "date":  "2026-10-04T07:02:29.0782901Z",
+    "date":  "2026-10-04T10:30:51.5678520Z",
     "results":  [
                     {
                         "id":  "natif-c",
                         "label":  "Natif (C)",
                         "status":  "ok",
-                        "peak_kb":  4196,
+                        "peak_kb":  3792,
                         "samples_kb":  [
-                                           4192,
                                            3792,
-                                           4196
+                                           3788,
+                                           3792
                                        ]
                     },
                     {
                         "id":  "python",
                         "label":  "Python 3.14",
                         "status":  "ok",
-                        "peak_kb":  16268,
+                        "peak_kb":  16340,
                         "samples_kb":  [
-                                           16232,
-                                           16268,
-                                           16268
+                                           16340,
+                                           16004,
+                                           16304
                                        ]
                     },
                     {
                         "id":  "javascript-node",
                         "label":  "JavaScript (Node)",
                         "status":  "ok",
-                        "peak_kb":  40328,
+                        "peak_kb":  40476,
                         "samples_kb":  [
-                                           40032,
+                                           40384,
                                            40020,
-                                           40328
+                                           40476
                                        ]
                     },
                     {
                         "id":  "wasm-houetor",
                         "label":  "WASM plugin (host Node)",
                         "status":  "ok",
-                        "peak_kb":  41424,
+                        "peak_kb":  41380,
                         "samples_kb":  [
-                                           41424,
-                                           41360,
-                                           41332
+                                           40932,
+                                           41380,
+                                           41364
                                        ]
                     },
                     {
                         "id":  "wasm-wasmtime",
                         "label":  "WASM commande (wasmtime)",
                         "status":  "ok",
-                        "peak_kb":  13736,
+                        "peak_kb":  14384,
                         "samples_kb":  [
-                                           13612,
-                                           13704,
-                                           13736
+                                           13780,
+                                           13600,
+                                           14384
+                                       ]
+                    },
+                    {
+                        "id":  "wasm-wazero",
+                        "label":  "WASM commande (wazero)",
+                        "status":  "ok",
+                        "peak_kb":  16100,
+                        "samples_kb":  [
+                                           16100,
+                                           16092,
+                                           16072
                                        ]
                     }
                 ],

@@ -16,6 +16,8 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let k: i64 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(100_000);
     let n: i64 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(45);
+    // Étiquette du runtime appelant (3ᵉ argument) — défaut historique : wasmtime
+    let impl_label = args.get(3).cloned().unwrap_or_else(|| "wasm-wasmtime".to_string());
 
     let t0 = Instant::now();
     let first = fib(n);
@@ -31,7 +33,8 @@ fn main() {
     let compute = t2 - t1;
     let compute_ms = compute.as_secs_f64() * 1000.0;
     println!(
-        "{{\"impl\":\"wasm-wasmtime\",\"result\":\"{}\",\"first_call_us\":{:.3},\"compute_ms\":{:.3},\"per_call_ns\":{:.1},\"k\":{},\"n\":{},\"maxrss_kb\":0}}",
+        "{{\"impl\":\"{}\",\"result\":\"{}\",\"first_call_us\":{:.3},\"compute_ms\":{:.3},\"per_call_ns\":{:.1},\"k\":{},\"n\":{},\"maxrss_kb\":0}}",
+        impl_label,
         first,
         t1.duration_since(t0).as_secs_f64() * 1e6,
         compute_ms,
