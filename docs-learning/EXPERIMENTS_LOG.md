@@ -430,3 +430,34 @@ Durées (`timings_ms`) : install_url v1 **224,2 ms** · v2 (mise à jour) **224,
 **Limite honnête :** le « distant » = HTTP localhost (le protocole est réel, pas l'échelle internet : pas d'HTTPS/signature/protocole de résolution de versions — voir suites signature/provenance).
 
 **Suite :** WASI réseau (sockets), WIT, signature/provenance des plugins, client MCP externe.
+
+---
+
+## Exp 014 — Intégrité de la distribution : épinglage sha256 du wasm (2026-10-04)
+
+**Contexte :** l'Exp 013 téléchargeait un plugin distant **sans aucune preuve d'intégrité** — un registre compromis pouvait livrer n'importe quel octet. Lacune immédiate du prototype + première brique « provenance » de la conclusion Q4/Q9.
+
+**Action :**
+- `host.mjs` : champ manifeste **`sha256`** (hex 64) vérifié à chaque `loadManifest` (list/info/run/bench) et **avant copie** lors d'un `install` local ; **`install-url` l'exige** (source distante = contenu épinglé, octets reçus hachés *avant* staging) ; nouvelle commande **`hash <dossier>`** pour rédiger le manifeste ; `list` affiche `sha256=épinglé|absent` ;
+- `registry_test.mjs` étendu : variants `nosha`/`badsha` + scénarios I1, I3, I4, I5.
+
+**Preuves brutes** (`registry_test.json`, `all_checks_pass: true`, **15/15**) :
+
+```text
+✅ I1 distant sans sha256 refusé — [host] ERREUR : install-url : champ "sha256" obligatoire pour une source distante (épinglage du contenu)
+✅ I3 sha256 faux refusé, rien installé — sha256 INCONGRU (…) 
+✅ I4 wasm altéré sur disque → run refusé — [host] ERREUR : regprobe : sha256 INCONGRU (manifeste 55bd00878acd…, fichier 58fe6853306f…) — contenu altéré ?
+✅ I5 plugin sans sha256 chargeable (hello 2+3.5=5.5) — result=5.5
+✅ (R1-R6 + nettoyages : inchangés, 11 checks toujours verts)
+```
+
+Détail I4 : le test **retourne 1 octet** du wasm installé, `run` est refusé, le fichier est restauré — vérification **au moment de l'exécution**, pas seulement à l'installation.
+
+**Résultat :**
+- **Chaîne d'intégrité complète côté distribution** : distant sans empreinte = refus, distant avec fausse empreinte = refus *avant* installation, altération post-installation = refus à chaque appel ;
+- compat conservée : plugins locaux **sans** `sha256` restent chargeables (hello 5.5 ✅) — le pinning est *obligatoire à distance, optionnel en local* ;
+- `host.mjs` reste **0 dépendance** (`node:crypto` intégré) ; 15/15 checks dont la non-régression Exp 013.
+
+**Limite honnête :** sha256 = intégrité **optimiste** (l'attaquant qui contrôle le registre contrôle aussi le manifeste) → la vraie provenance nécessite une **signature asymétrique** (suite).
+
+**Suite :** signature asymétrique des manifestes, WASI réseau, WIT, client MCP externe.

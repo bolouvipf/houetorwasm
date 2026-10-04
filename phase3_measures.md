@@ -89,7 +89,16 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 
 Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (update) — wall inclus spawn Node ≈ 73 ms ; traitement réel ≈ 150 ms (fetch + staging + archivage + revalidation).
 
-**Lecture** : la couche distribution/découverte (lacune Q4) se comble en ~80 lignes au-dessus du manifeste existant — mais elle reste **maison** : pas de standard de registre, pas de signature/provenance (limite notée Exp 013).
+**Intégrité (Exp 014)** : le manifeste peut (localement) et doit (à distance, `install-url`) épingler le **sha256** du wasm — vérifié à chaque `loadManifest` (list/info/run/bench), avant copie locale, et sur les octets reçus avant staging. Extension du même script → **15/15 checks** :
+
+| Scénario intégrité | Verdict | Preuve |
+|---|---|---|
+| Distant **sans** sha256 | ✅ refusé | `champ "sha256" obligatoire pour une source distante` |
+| Distant avec **fausse** empreinte | ✅ refusé | rien installé, staging nettoyé |
+| Wasm **altéré après install** (1 octet flip) | ✅ refusé à l'exécution | `sha256 INCONGRU (manifeste 55bd…, fichier 58fe…)` |
+| Plugin local **sans** sha256 (compat) | ✅ chargeable | `hello 2+3.5=5.5` |
+
+**Lecture** : la couche distribution/découverte (lacune Q4) se comble en ~80 lignes au-dessus du manifeste existant, et l'intégrité en ~30 de plus (`node:crypto`, 0 dépendance) — mais tout reste **maison** : pas de standard de registre, sha256 = intégrité optimiste (registre compromis = manifeste compromis), signature asymétrique = suite (limite notée Exp 013-014).
 
 ## 4. Lecture par critère (étude §7)
 
@@ -161,7 +170,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\portability_
 # 7. Capabilities fichier WASI (Exp 011-012) : lecture+écriture, grant/escape/ro/nogrant → wasi_caps.json / wasi_write.json
 #    (modules : cargo build --release --target wasm32-wasip1 --manifest-path prototype\samples\filecap\Cargo.toml)
 
-# 8. Distribution : registre local + install-url HTTP (Exp 013) → registry_test.json (11/11)
+# 8. Distribution + intégrité (Exp 013-014) : registre + install-url + épinglage sha256 (15/15) → registry_test.json
 node "prototype\bench\registry_test.mjs"
 node prototype\bench\wasi_caps.mjs
 node prototype\bench\wasi_write.mjs

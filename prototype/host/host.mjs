@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // HOUETOR Plugin Host — MVP (Phase 3)
 // Cycle de vie : discover -> validate manifest -> load (deny-by-default) -> call -> bench -> install -> remove -> registry
-// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry> [...]
+// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry|hash> [...]
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,7 @@ const die = (msg, code = 1) => {
   process.exit(code);
 };
 const now = () => performance.now();
+const sha256 = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
 
 function discover() {
   if (!fs.existsSync(PLUGINS)) return [];
@@ -45,6 +47,12 @@ function loadManifest(dirName) {
     die(`${dirName} : permissions NON accordées par l'hôte : ${illegal.join(", ")}`);
   const wasmPath = path.join(dir, raw.wasm);
   if (!fs.existsSync(wasmPath)) die(`${dirName} : fichier wasm manquant : ${raw.wasm}`);
+  // intégrité (Exp 014) : si le manifeste épingle sha256, tout écart = refus
+  if (raw.sha256 !== undefined) {
+    const actual = sha256(fs.readFileSync(wasmPath));
+    if (actual !== raw.sha256)
+      die(`${dirName} : sha256 INCONGRU (manifeste ${String(raw.sha256).slice(0, 12)}…, fichier ${actual.slice(0, 12)}…) — contenu altéré ?`);
+  }
   return { dir, manifest: raw, wasmPath, permissions: perms };
 }
 
@@ -122,6 +130,8 @@ function precheckManifest(raw, ctx) {
   const perms = raw.permissions ?? [];
   const illegal = perms.filter((p) => !HOST_ALLOWED.includes(p));
   if (illegal.length) die(`${ctx} : permissions NON accordées par l'hôte : ${illegal.join(", ")}`);
+  if (raw.sha256 !== undefined && !/^[0-9a-f]{64}$/.test(String(raw.sha256)))
+    die(`${ctx} : "sha256" doit être une empreinte hexadécimale sur 64 caractères`);
 }
 
 switch (cmd) {
@@ -135,8 +145,19 @@ switch (cmd) {
       console.log(
         `${p.manifest.name}@${p.manifest.version}  size=${fs.statSync(p.wasmPath).size}B  exports=[${p.manifest.exports.join(",")}]  perms=[${
           p.permissions.join(",") || "aucune"
-        }]`
+        }]  sha256=${p.manifest.sha256 ? "épinglé" : "absent"}`
       );
+    break;
+  }
+
+  case "hash": {
+    // aide à la rédaction de manifeste (Exp 014) : imprime l'empreinte du wasm d'un dossier-plugin
+    const src = rest[0];
+    if (!src) die("usage : hash <dossier-plugin>");
+    const m = JSON.parse(fs.readFileSync(path.join(src, "manifest.json"), "utf8"));
+    const wasmSrc = path.join(src, m.wasm);
+    if (!fs.existsSync(wasmSrc)) die(`${m.name} : fichier wasm manquant : ${m.wasm}`);
+    console.log(sha256(fs.readFileSync(wasmSrc)));
     break;
   }
 
@@ -233,6 +254,14 @@ switch (cmd) {
     const src = rest[0];
     if (!src) die("usage : install <dossier-plugin>");
     const srcManifest = JSON.parse(fs.readFileSync(path.join(src, "manifest.json"), "utf8"));
+    // intégrité AVANT copie (Exp 014) : un src altéré n'entre jamais dans plugins/
+    if (srcManifest.sha256 !== undefined) {
+      const wasmSrc = path.join(src, srcManifest.wasm);
+      if (!fs.existsSync(wasmSrc)) die(`${srcManifest.name} : fichier wasm manquant : ${srcManifest.wasm}`);
+      const actual = sha256(fs.readFileSync(wasmSrc));
+      if (actual !== srcManifest.sha256)
+        die(`${srcManifest.name} : sha256 INCONGRU (manifeste ${String(srcManifest.sha256).slice(0, 12)}…, fichier ${actual.slice(0, 12)}…) — installation refusée`);
+    }
     doInstall(src, srcManifest);
     break;
   }
@@ -250,6 +279,9 @@ switch (cmd) {
       die(`install-url : échec du téléchargement du manifeste (${e.message})`);
     }
     precheckManifest(manifest, `${base} (manifeste distant)`);
+    // Exp 014 : le contenu DISTANT doit être épinglé — sha256 obligatoire
+    if (manifest.sha256 === undefined)
+      die(`install-url : champ "sha256" obligatoire pour une source distante (épinglage du contenu)`);
     // doublon testé AVANT staging : die() ne déclenche pas de cleanup
     const destCheck = path.join(PLUGINS, manifest.name);
     if (fs.existsSync(destCheck)) {
@@ -272,10 +304,17 @@ switch (cmd) {
       fs.rmSync(staging, { recursive: true, force: true });
       die(`install-url : wasm inaccessible (HTTP ${wRes.status})`);
     }
+    // épinglage (Exp 014) : vérifier l'empreinte des octets REÇUS avant installation
+    const received = Buffer.from(await wRes.arrayBuffer());
+    const actual = sha256(received);
+    if (actual !== String(manifest.sha256)) {
+      fs.rmSync(staging, { recursive: true, force: true });
+      die(`install-url : sha256 INCONGRU (manifeste ${String(manifest.sha256).slice(0, 12)}…, reçu ${actual.slice(0, 12)}…) — contenu altéré, rien n'est installé`);
+    }
     // chemin wasm exact du manifeste (sous-dossiers possibles)
     const wasmDest = path.join(staging, String(manifest.wasm));
     fs.mkdirSync(path.dirname(wasmDest), { recursive: true });
-    fs.writeFileSync(wasmDest, Buffer.from(await wRes.arrayBuffer()));
+    fs.writeFileSync(wasmDest, received);
     fs.writeFileSync(path.join(staging, "manifest.json"), JSON.stringify(manifest, null, 2));
     doInstall(staging, manifest);
     fs.rmSync(staging, { recursive: true, force: true });
@@ -326,5 +365,5 @@ switch (cmd) {
   }
 
   default:
-    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry> [args...]");
+    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry|hash> [args...]");
 }

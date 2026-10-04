@@ -14,6 +14,7 @@
    - **Cycle de vie chronométré ✅** (Exp 008) : install **18,5 ms**, update **24,7 ms**, remove **14,2 ms** fs net (baseline spawn Node 73,3 ms ; doublon refusé, `hello` intact) → `lifecycle.json`.
    - **Capabilities fichier WASI ✅** (Exp 011+012) : lecture ET écriture — accord → `ok`, évasion `data/../` → refusée (3 moteurs : os 63/63/76), aucun accord → refus, preopen `ro` → écriture bloquée (wazero), `evil.txt` jamais créé ; **21 checks + 2 n/a** (`wasi_caps.json` + `wasi_write.json`, modules `prototype/samples/filecap`).
    - **Distribution ✅** (Exp 013) : commandes `registry` (découverte layout `<reg>/<nom>/<version>`) + `install-url` (fetch HTTP → staging → validation → install versionnée) ; serveur HTTP local = registre distant ; **11/11 checks** (doublon/corruption/404 refusés proprement, `.history` archivé), install **224 ms** → `registry_test.json` ; lacune Q4 « distribution » comblée côté prototype (standard mondial toujours absent).
+   - **Intégrité ✅** (Exp 014) : épinglage **sha256** du wasm au manifeste — obligatoire pour `install-url`, vérifié à chaque chargement + avant copie locale ; commande `hash` ; **15/15 checks** (distant sans sha refusé, fausse empreinte refusée, altération post-install détectée à l'exécution, plugins sans sha compat) → `registry_test.json` ; `node:crypto` = 0 dépendance. **Limite** : sha256 = intégrité optimiste (registre compromis = manifeste compromis) → signature asymétrique = suite.
 4. **Phase 4 — Pont MCP** → `prototype/mcp/bridge.mjs` + `phase4_mcp_bridge.md`.
    - **8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** ; défense en profondeur (outil exposé, appel refusé par sandbox).
 5. **Conclusion §11 écrite** → `conclusion.md` : réponses aux 8 questions + verdict hypothèse §9 (**confirmée côté technique, nuancée côté écosystème**).
@@ -26,15 +27,15 @@
 1. **WASI réseau** : sockets (WASI 0.3) ; **WIT** (chaînes/structs) pour enrichir le bridge MCP (types d'outils riches).
 2. Client MCP externe « inspector » (filtre d'outils par policy) — le test actuel *est* déjà un client JSON-RPC externe (spawn stdio) ; reste l'interconnexion avec un vrai client tiers (Claude Desktop/inspector).
 3. Workload non compute-bound (strings/mémoire) + charge de fichiers WASI réelle ; portabilité macOS/navigateur.
-4. Instruments de dépendances (WIT/composants). ~~Chargement distant~~ : **FAIT (Exp 013)**.
-5. Éventuellement : signature/provenance des plugins, hôte wasmtime en Rust.
+4. Instruments de dépendances (WIT/composants). ~~Chargement distant~~ : **FAIT (Exp 013-014)**.
+5. **Signature asymétrique/provenance des plugins** (au-delà du sha256, Exp 014), hôte wasmtime en Rust ; ~~chargement distant~~ = FAIT (Exp 013-014).
 
 ## Point de reprise exact
 
 > Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012), **distribution ✅ registre/HTTP** (Exp 013). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
 > Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
-> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 013**) → `conclusion.md`.
-> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (tout vert).
+> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 014**) → `conclusion.md`.
+> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) (tout vert).
 
 ## Décisions de session
 

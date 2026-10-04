@@ -1,17 +1,17 @@
 {
-  "date": "2026-10-04T11:46:26.116Z",
+  "date": "2026-10-04T11:56:11.246Z",
   "machine": "win32 x64 v24.15.0",
   "registry_layout": "<reg>/<nom>/<version>/{manifest.json,wasm}",
   "base_url": "http://127.0.0.1:<port>",
   "timings_ms": {
-    "install_v1": 224.2,
-    "install_v2": 224.1
+    "install_v1": 422.9,
+    "install_v2": 354.2
   },
   "checks": [
     {
       "id": "R1 registry liste les 2 versions",
       "pass": true,
-      "detail": "regprobe@1.0.0  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe@1.0.1  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-404@1.0.0  size=?B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-corrupt@9.9.9  INVALIDE (\"exports\" absent ou invalide) — ignoré"
+      "detail": "regprobe@1.0.0  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe@1.0.1  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-404@1.0.0  size=?B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-badsha@1.0.0  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune] | regprobe-corrupt@9.9.9  INVALIDE (\"exports\" absent ou invalide) — ignoré | regprobe-nosha@1.0.0  size=160B  exports=[add,fibonacci,plugin_version]  perms=[aucune]"
     },
     {
       "id": "R2 install-url 1.0.0",
@@ -36,7 +36,7 @@
     {
       "id": "R5 manifeste corrompu refusé (rien installé)",
       "pass": true,
-      "detail": "[host] ERREUR : http://127.0.0.1:64737/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
+      "detail": "[host] ERREUR : http://127.0.0.1:55594/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
     },
     {
       "id": "R5 plugin courant intact",
@@ -47,6 +47,26 @@
       "id": "R6 wasm 404 refusé, staging nettoyé",
       "pass": true,
       "detail": "[host] ERREUR : install-url : wasm inaccessible (HTTP 404)"
+    },
+    {
+      "id": "I1 distant sans sha256 refusé",
+      "pass": true,
+      "detail": "[host] ERREUR : install-url : champ \"sha256\" obligatoire pour une source distante (épinglage du contenu)"
+    },
+    {
+      "id": "I3 sha256 faux refusé, rien installé",
+      "pass": true,
+      "detail": "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 76"
+    },
+    {
+      "id": "I4 wasm altéré sur disque → run refusé",
+      "pass": true,
+      "detail": "[host] ERREUR : regprobe : sha256 INCONGRU (manifeste 55bd00878acd…, fichier 58fe6853306f…) — contenu altéré ?"
+    },
+    {
+      "id": "I5 plugin sans sha256 chargeable (hello 2+3.5=5.5)",
+      "pass": true,
+      "detail": "result=5.5"
     },
     {
       "id": "nettoyage : témoin retiré",
