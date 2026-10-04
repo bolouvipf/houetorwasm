@@ -1,7 +1,7 @@
 # Conclusion — Réponses aux questions finales (étude §11)
 
-> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→012).
-> Rappel de la règle du lab : **aucune réponse sans preuve brute datée** ; les chiffres renvoient aux fichiers de mesures.
+> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→020).
+> Rappel de la règle du lab : **aucune réponse sans preuve brute datée** ; les chiffres renvoient aux fichiers de mesures (`phase3_measures.md` + JSON bruts = source de vérité).
 
 ## Verdict sur l'hypothèse (§9)
 
@@ -9,7 +9,7 @@
 
 **CONFIRMÉE POUR LA PARTIE TECHNIQUE, NUANCÉE POUR LA PARTIE ÉCOSYSTÉMIQUE.**
 
-- ✅ **Technique** : notre hôte (250 lignes, 0 dépendance) fait tout le cycle de vie §4, avec sandbox deny-by-default, mesures au 1/10 000ᵉ de µs, exécution **≈ 1,5× du natif** sous wasmtime (médiane de 5 campagnes, fourchette 0,6-1,9× — Exp 006+009), cycle de vie chronométré 14-25 ms (Exp 008), et **portabilité prouvée de bout en bout : un même binaire sur 2 OS (Windows + Linux), 4 exécuteurs, 3 moteurs indépendants, 7 combinaisons, un résultat identique** (Exp 007+010).
+- ✅ **Technique** : notre hôte (≈ 725 lignes, 0 dépendance) fait tout le cycle de vie §4, avec sandbox deny-by-default, mesures au 1/10 000ᵉ de µs, exécution **≈ 1,5× du natif** sous wasmtime (médiane de 5 campagnes, fourchette 0,6-1,9× — borne basse = bruit de mesure, Exp 006+009), cycle de vie chronométré 14-25 ms (Exp 008), et **portabilité prouvée de bout en bout : un même binaire sur 2 OS (Windows + Linux), 4 exécuteurs, 3 moteurs indépendants, 7 combinaisons, un résultat identique** (Exp 007+010). **Le Component Model a été exécuté pour de vrai** : composant WIT `houetor:calc/calc@0.1.0` — contrat et capabilities **lus dans le binaire avant exécution**, typage fort (refus avant exécution), fs deny-by-default à 2 niveaux (Exp 018, 20/20), pont MCP typé (Exp 019) ; **anti-DoS** : plugin malveillant coupé en 313 ms au lieu de 60,2 s (Exp 020, 12/12).
 - ⚠️ **Écosystémique** : aucun des 5 problèmes listés n'est résolu *par WASM lui-même* — nous les avons contournés avec un manifeste maison (interfaces/permissions/découverte) et ils restent ouverts à l'échelle du marché (distribution, compatibilité : Phase 2 montre **8 contrats hétérogènes** et des éditeurs majeurs qui n'utilisent pas WASM pour leurs plugins).
 - **Ce qu'il manque n'est pas du runtime mais du standard sémantique** → exactement le rôle assigné au Component Model/WASI (0.2 en 2024, 0.3 le 2026-06-11, 1.0 attendu fin 2026/début 2027).
 
@@ -26,7 +26,7 @@
 ## 2. Quel est le niveau de maturité de WASI et du Component Model ?
 
 **WASI : 0.2 stable (2024-01) → 0.3 stable (2026-06-11, async natif) mais ~15 mois de retard sur le planning** ; **Component Model : en route vers 1.0** (BA « Road to 1.0 », 2026-06-08), WIT comme IDL. Source : Phase 1 §sources, Exp 001.
-→ Maturité 🟡 en pleine accélération : utilisable aujourd'hui (wasmCloud, Spin le prouvent en prod), mais le contrat riche (types, ressources, async) n'est pas encore *partout* — d'où notre typage `number[]` limitant le bridge Phase 4.
+→ Maturité 🟡 en pleine accélération : utilisable aujourd'hui (wasmCloud, Spin le prouvent en prod). **Vérifié en laboratoire (Exp 018-019)** : WIT + composants + capabilities fonctionnent via wasmtime 49 (`wasm32-wasip2`, typage fort, interfaces inspectables) — reste le riche (`resource`/`variant`/async) et la généralisation au-delà de wasmtime.
 
 ## 3. Quels systèmes utilisent déjà WASM comme infrastructure de plugins ?
 
@@ -37,14 +37,14 @@
 Liste établie par preuves (Phase 1 §8 + Phase 2 synthèse) :
 1. **Contrat sémantique fragmenté** : ≥ 8 ABI/IDL hétérogènes (proxy-wasm, ROW_DIRECT, dlopen signé, NaN-boxing, WIT, WASI, host functions…).
 2. **Découverte/distribution** : aucun registre/manifeste standard (nous en avons inventé un — manifeste + registre HTTP + épinglage sha256 + signature Ed25519, Exp 013-016, 15/15 + 12/12 checks — preuve que le standard manque autant que sa facilité d'invention ; reste à industrialiser : ancre de confiance partagée, standard de registre).
-3. **Permissions** : WASI fournit déjà les capabilities **système** — prouvées ici en lecture **et écriture** (Exp 011-012 : accord = lecture/écriture OK, évasion `../` refusée sur 3 moteurs, aucun accord = refus, preopen `ro` bloquant l'écriture chez wazero) ; il manque le niveau **applicatif** standard (« plugin demande, hôte accorde ») : notre manifeste + `HOST_ALLOWED` est encore maison. Limite : les CLI wasmtime 49 et node:wasi n'exposent pas le preopen read-only.
+3. **Permissions** : WASI fournit déjà les capabilities **système** — prouvées ici en lecture **et écriture** (Exp 011-012 : accord = lecture/écriture OK, évasion `../` refusée sur 3 moteurs, aucun accord = refus, preopen `ro` bloquant l'écriture chez wazero) ; le niveau **applicatif** reste maison mais est devenu **vérifiable** : le composant qui *importe* le filesystem sans permission déclarée **ne se charge pas** (déni statique Exp 018) et tout montage fichier passe par `HOUETOR_PREOPENS` (double verrou). Limite : les CLI wasmtime 49 et node:wasi n'exposent pas le preopen read-only.
 4. **Maturité WASI/CM** : async livré 2026-06, threads absents, 1.0 pas encore là.
 5. **Adoption réelle** : 0,35 % des sites ; Docker Wasm abandonné 🔴 ; APISIX WASM gelé 🟡 ; runwasi encore non-core.
 6. **Éditeurs de plugins qui contournent WASM** (Chrome, VS Code) : le standard n'impose rien à personne.
 
 ## 5. Peut-on construire un host de plugins WASM générique ?
 
-**OUI — démontré.** `prototype/host/host.mjs` : ~250 lignes, **0 dépendance**, découvre, valide le manifeste, charge en **deny-by-default**, accorde des permissions, appelle, retire, archive les versions, refuse les doublons — **8/8 étapes du §4 prouvées** (Exp 003) et **chronométrées** (Exp 008 : install 18,5 ms · update 24,7 ms · remove 14,2 ms de fs net). Le même host charge n'importe quel `wasm32-unknown-unknown` respectant le manifeste (le plugin `needy` hostile l'a appris à ses dépens).
+**OUI — démontré.** `prototype/host/host.mjs` : ≈ **725 lignes**, **0 dépendance**, découvre, valide le manifeste, charge en **deny-by-default**, accorde des permissions, appelle, retire, archive les versions, refuse les doublons — **8/8 étapes du §4 prouvées** (Exp 003) et **chronométrées** (Exp 008 : install 18,5 ms · update 24,7 ms · remove 14,2 ms de fs net). Le même host charge n'importe quel `wasm32-unknown-unknown` respectant le manifeste (le plugin `needy` hostile l'a appris à ses dépens) **et** les composants WIT (Exp 018 : interfaces typées, limites fuel/timeout Exp 020 pour le code non fiable).
 
 ## 6. Quels sont ses avantages et ses limites face aux plugins traditionnels ?
 
@@ -56,14 +56,14 @@ Liste établie par preuves (Phase 1 §8 + Phase 2 synthèse) :
 | RSS pic | **3,8 Mo** | 16,3 Mo | 40,5 Mo | **14,4 Mo** (wasmtime) / 16,1 (wazero) | runtime dédié raisonnable |
 | Cycle de vie install/update/remove | réinstallation | réinstallation | — | **14-25 ms** fs net (Exp 008) | WASM OK |
 | Portabilité | ❌ par cible | 🟡 runtime | 🟡 runtime | ✅ **même binaire : 2 OS (Windows+Linux), 4 exécuteurs, 3 moteurs**, même résultat (Exp 007+010) | WASM vainqueur |
-| Isolation | ❌ | ❌ | ❌ | ✅ sandbox | WASM vainqueur |
-| Limites | — | lenteur ×120-290 | aucune sandbox | surcoût runtime (14-41 Mo), types faibles, WASI en devenir | |
+| Isolation | ❌ | ❌ | ❌ | ✅ sandbox + **fuel/timeout anti-DoS** (Exp 020 : 60,2 s → 313 ms) | WASM vainqueur |
+| Limites | — | lenteur ×120-290 | aucune sandbox | surcoût runtime (14-41 Mo), mémoire non plafonnée, WASI en devenir (types corrigés côté composant, Exp 019) | |
 
 (Chiffres : Exp 006→009 / `results.json` / `peak_rss.json` / `lifecycle.json`.)
 
 ## 7. Peut-on intégrer naturellement WASM et MCP ?
 
-**OUI — démontré en 8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** → un plugin installé devient un jeu d'outils MCP **zéro intégration** côté agent ; `tools/call` routé vers le host qui conserve son **deny-by-default** (défense en profondeur : `needy_do_log` exposé mais refusé). La limite (types `number[]`) vient de l'absence de WIT, **pas de MCP**. Aucun projet public équivalent trouvé en Phase 2 → niche originale.
+**OUI — démontré en 8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** → un plugin installé devient un jeu d'outils MCP **zéro intégration** côté agent ; `tools/call` routé vers le host qui conserve son **deny-by-default** (défense en profondeur : `needy_do_log` exposé mais refusé). **La limite « types `number[]` » a été levée pour les composants** (Exp 019) : `inputSchema` à propriétés nommées typées issues du WIT (`{a: number, b: number}`), refus des paramètres manquants, régressions 8/8 + 9/9 — reste `resource`/`variant` et la sémantique métier. Aucun projet public équivalent trouvé en Phase 2 → niche originale.
 
 ## 8. Existe-t-il une opportunité technique ou commerciale autour de cette infrastructure ?
 
@@ -76,4 +76,4 @@ Liste établie par preuves (Phase 1 §8 + Phase 2 synthèse) :
 
 ## Réponse finale (§11)
 
-> **WASM va loin comme infrastructure universelle de plugins — toute la mécanique est là, mesurée, et notre hôte le prouve en 250 lignes — mais « universel » reste à construire au-dessus du binaire : contrat, découverte, distribution.** L'expérience MCP montre que cette couche manquante se comble en quelques heures quand on l'invente soi-même ; le Component Model est la tentative officielle de la produire pour tous. « WASM sera le prochain MCP » est donc réfuté (ce sont des couches complémentaires : exécution vs interaction) ; « WASM peut être *la couche d'exécution* des systèmes de plugins des agents » est, lui, **confirmé**.
+> **WASM va loin comme infrastructure universelle de plugins — toute la mécanique est là, mesurée, et notre hôte le prouve en ~725 lignes — mais « universel » reste à construire au-dessus du binaire : contrat, découverte, distribution.** L'expérience MCP montre que cette couche manquante se comble en quelques heures quand on l'invente soi-même ; le Component Model est la tentative officielle de la produire pour tous — **et nous l'avons fait tourner** (Exp 018-020 : composant WIT typé, capabilities lisibles dans le binaire, outils MCP typés, plugin malveillant coupé au fuel). « WASM sera le prochain MCP » est donc réfuté (ce sont des couches complémentaires : exécution vs interaction) ; « WASM peut être *la couche d'exécution* des systèmes de plugins des agents » est, lui, **confirmé**.

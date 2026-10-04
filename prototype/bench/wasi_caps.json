@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-04T11:24:20.334Z",
+  "date": "2026-10-04T17:01:56.459Z",
   "machine": "win32 x64 v24.15.0",
   "module": "filecap.wasm (wasm32-wasip1)",
   "targets": {
@@ -74,7 +74,7 @@
       "target": "data/input.txt",
       "len": 16,
       "byte_sum": 1157,
-      "elapsed_us": 485,
+      "elapsed_us": 370.5,
       "runs": 3
     },
     {
@@ -86,7 +86,7 @@
       "impl": "filecap",
       "target": "data/../secret.txt",
       "error": "Operation not permitted (os error 63)",
-      "elapsed_us": 175.7,
+      "elapsed_us": 322.9,
       "runs": 3
     },
     {
@@ -98,7 +98,7 @@
       "impl": "filecap",
       "target": "data/input.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 69.2,
+      "elapsed_us": 105.9,
       "runs": 3
     },
     {
@@ -111,7 +111,7 @@
       "target": "data/input.txt",
       "len": 16,
       "byte_sum": 1157,
-      "elapsed_us": 436.6,
+      "elapsed_us": 534.7,
       "runs": 3
     },
     {
@@ -123,7 +123,7 @@
       "impl": "filecap",
       "target": "data/../secret.txt",
       "error": "Operation not permitted (os error 63)",
-      "elapsed_us": 155.9,
+      "elapsed_us": 456.6,
       "runs": 3
     },
     {
@@ -135,7 +135,7 @@
       "impl": "filecap",
       "target": "data/input.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 18.7,
+      "elapsed_us": 12,
       "runs": 3
     },
     {
@@ -148,7 +148,7 @@
       "target": "data/input.txt",
       "len": 16,
       "byte_sum": 1157,
-      "elapsed_us": 1015.7,
+      "elapsed_us": 814.3,
       "runs": 3
     },
     {
@@ -160,7 +160,7 @@
       "impl": "filecap",
       "target": "data/../secret.txt",
       "error": "Capabilities insufficient (os error 76)",
-      "elapsed_us": 765.3,
+      "elapsed_us": 1171.2,
       "runs": 3
     },
     {
@@ -172,7 +172,7 @@
       "impl": "filecap",
       "target": "data/input.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 719.1,
+      "elapsed_us": 631.5,
       "runs": 3
     }
   ],

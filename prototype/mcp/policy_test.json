@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-04T12:00:06.653Z",
+  "date": "2026-10-04T16:52:57.194Z",
   "machine": "win32 x64 v24.15.0",
   "policy_format": "{ \"allow\": [\"outil_exact\", ...], \"deny\": [\"outil_exact\", ...] } — deny prime ; fichier illisible = fail-closed",
   "checks": [
@@ -21,12 +21,12 @@
     {
       "id": "P3 deny prime sur allow",
       "pass": true,
-      "detail": "tool « hello_fibonacci » refusé par policy (deny, C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-policy-e"
+      "detail": "tool « hello_fibonacci » refusé par policy (deny, C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-policy-6"
     },
     {
       "id": "P4 hors allow → refus policy (host jamais atteint)",
       "pass": true,
-      "detail": "tool « needy_do_log » refusé par policy (hors allow, C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-policy-eeqijt\\p"
+      "detail": "tool « needy_do_log » refusé par policy (hors allow, C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-policy-64oJtH\\p"
     },
     {
       "id": "P5 inconnu ≠ policy",
@@ -41,12 +41,12 @@
     {
       "id": "P6b policy illisible → tout refusé (fail-closed)",
       "pass": true,
-      "detail": "policy fail-closed (C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-policy-eeqijt\\broken.json illisible : Expected p"
+      "detail": "policy fail-closed (C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-policy-64oJtH\\broken.json illisible : Expected p"
     },
     {
       "id": "P7 sans policy → découverte complète",
       "pass": true,
-      "detail": "5 outils"
+      "detail": "9 outils"
     }
   ],
   "all_checks_pass": true

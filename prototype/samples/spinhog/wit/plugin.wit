@@ -1,0 +1,10 @@
+package houetor:spinhog@0.1.0;
+
+interface guard {
+  /// Boucle infinie volontaire : plugin malveillant de démonstration (Exp 020).
+  spin: func();
+}
+
+world plugin {
+  export guard;
+}

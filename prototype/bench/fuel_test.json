@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-04T16:47:21.501Z",
+  "machine": "win32 x64 v24.15.0",
+  "plugin_malveillant": "spinhog@1.0.0 (boucle infinie volontaire)",
+  "limites": {
+    "HOUETOR_FUEL": "entier > 0 → wasmtime -W fuel=",
+    "HOUETOR_TIMEOUT": "ex. 200ms → wasmtime -W timeout="
+  },
+  "timings_ms": {
+    "fuel_spin_ms": 312.8,
+    "timeout_spin_ms": 500.3,
+    "sans_limite_hang_ms": 60194.4
+  },
+  "checks": [
+    {
+      "id": "prérequis : spinhog déjà installé",
+      "pass": true,
+      "detail": "plugins/spinhog"
+    },
+    {
+      "id": "F1 sans limites → add 5.5, limits \"aucun (illimité)\"",
+      "pass": true,
+      "detail": "result=5.5 limits=aucun (illimité)"
+    },
+    {
+      "id": "F2 FUEL=1000000 → add(2,3.5)=5.5 (bénin accepté)",
+      "pass": true,
+      "detail": "result=5.5 limits={\"fuel\":1000000}"
+    },
+    {
+      "id": "F3 FUEL=1000000 → spin coupé « fuel épuisé » en < 5 s",
+      "pass": true,
+      "detail": "exit=1 313ms"
+    },
+    {
+      "id": "F4 FUEL=1000000 → fibonacci(45)=1134903170 (travail long accepté)",
+      "pass": true,
+      "detail": "result=1134903170"
+    },
+    {
+      "id": "F5 HOUETOR_FUEL=abc → refus fail-closed AVANT exécution",
+      "pass": true,
+      "detail": "[host] ERREUR : witcalc : HOUETOR_FUEL invalide « abc » — attendu entier strictement positif (ex. 1000000) — refusé (fail-closed)"
+    },
+    {
+      "id": "F6 TIMEOUT=200ms → spin coupé « timeout atteint » en < 5 s",
+      "pass": true,
+      "detail": "exit=1 500ms"
+    },
+    {
+      "id": "F7 HOUETOR_TIMEOUT=100 (sans unité) → refus fail-closed",
+      "pass": true,
+      "detail": "[host] ERREUR : spinhog : HOUETOR_TIMEOUT invalide « 100 » — attendu durée à unité (ex. 200ms, 2s) — refusé (fail-closed)"
+    },
+    {
+      "id": "F8 module core + fuel → refus (chemin in-process non fuel-limable)",
+      "pass": true,
+      "detail": "[host] ERREUR : hello : limites actives (HOUETOR_FUEL=1000000) mais ce plugin est un module core exécuté in-process (Node) : fuel/timeout impossible sur ce chemin — utiliser un composant (\"type\":\"component\", wasmtime) — refusé (fail-closed)"
+    },
+    {
+      "id": "F9 bench sous limite → refusé (mesures faussées)",
+      "pass": true,
+      "detail": "[host] ERREUR : hello : bench interdit avec HOUETOR_FUEL/HOUETOR_TIMEOUT actifs (mesures faussées) — déconnecter les limites"
+    },
+    {
+      "id": "F10 sans limites → spin bloque jusqu'à la garde-fou hôte (> 55 s)",
+      "pass": true,
+      "detail": "exit=1 60194ms (avant-correction)"
+    },
+    {
+      "id": "F11 spinhog retiré, hello/needy/witcalc intacts",
+      "pass": true,
+      "detail": "gone=true intact={\"hello\":true,\"needy\":true,\"witcalc\":true} staging=false"
+    }
+  ],
+  "all_checks_pass": true
+}

@@ -102,6 +102,22 @@ Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (upda
 
 **Lecture** : la couche distribution/découverte (lacune Q4) se comble en ~80 lignes au-dessus du manifeste existant, l'intégrité en ~30 (`node:crypto`, 0 dépendance) et la provenance en ~60 de plus — mais tout reste **maison** : pas de standard de registre, distribution des clés de confiance = humaine (pas de PKI), signature du manifeste ≠ audit du contenu (limites notées Exp 013-016).
 
+## 3quater. Composants WIT (Exp 018) — le contrat dans le binaire
+
+`prototype/samples/witcalc` : `package houetor:calc@0.1.0` (`add f64`, `fibonacci u32→u64`, `greet string`, `read-file → result<string,string>`) → `wit-bindgen 0.62` + `cargo --target wasm32-wasip2` → **composant 94 668 o**, sha256 épinglé. Host : commandes `wit`/`types` (WIT + imports lus via `wasm-tools component wit` **sans exécuter**), exécution WAVE (`--invoke add(2, 3.5)`).
+
+**Preuves brutes** (`component_test.json`, **20/20**) : WIT lue dans le binaire (`export houetor:calc/calc@0.1.0;`) · `add(2, 3.5)` → **5.5** (wall wasmtime **79,7 ms**) · `fibonacci(45)` → **1134903170** (identique aux 7 combinaisons module/OS/moteur) · `greet("HOUETOR")` → `"Bonjour, HOUETOR !"` · `add("x", 1)` → **refus avant exécution** (`type WIT : add attend f64`) · arity wrong → refus · sans montage → `err os 44` · avec `HOUETOR_PREOPENS` → `ok("BONJOUR-WASM-CAP")` · évasion `data/../secret.txt` → `err os 63`, secret non divulgué · composant fs **sans** permission → **refus statique au chargement**.
+
+**Lecture** : les 4 premières lignes du tableau §4 (dépendances, permissions) gagnent une preuve statique — la surface de capabilities est **inspectable avant exécution**, ce que Phase 1 §2.2 annonçait.
+
+## 3quinquies. Isolation temporelle (Exp 020) — fuel + timeout
+
+`HOUETOR_FUEL` (entier > 0) et `HOUETOR_TIMEOUT` (`200ms`) → wasmtime `-W fuel=` / `-W timeout=` sur le chemin composant ; plugin malveillant `spinhog` (`spin` = boucle infinie).
+
+**Preuves brutes** (`fuel_test.json`, **12/12**) : **sans limites → `spin` bloque 60 194 ms** (garde-fou hôte) ; avec `fuel=1000000` → **coupé en 313 ms** (`fuel épuisé`) ; avec `timeout=200ms` → **coupé en 500 ms** ; sous **la même limite**, `add(2,3.5)` → 5.5 et `fibonacci(45)` → 1134903170 (légitime intact) ; `HOUETOR_FUEL=abc` / `HOUETOR_TIMEOUT=100` (sans unité) → **refus avant exécution** ; limite sur module core (in-process Node) → **refus explicite** (pas d'ignorance silencieuse) ; `bench` sous limite → refus.
+
+**Lecture** : l'isolation n'est plus seulement mémoire/capabilities mais aussi **temps CPU** — la lacune « pas de garde-fou DoS » est comblée côté composant. Limite : unités de fuel **non portables** d'une version de wasmtime à l'autre ; chemin module core non fuel-limable (refusé) ; **mémoire non plafonnée** (`-W max-memory-size` non câblé).
+
 ## 4. Lecture par critère (étude §7)
 
 | Critère | Preuve mesurée | Verdict |
@@ -110,17 +126,17 @@ Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (upda
 | **Temps d'exécution** | canonique : natif **7,2** · wasmtime **13,9** · WASM-via-Node **24,5** · JS **34,3** · Python **1 593,6** ns ; ratios sur 5 campagnes | wasmtime ≈ **0,6-1,9× le natif** (médiane 1,5×) ; WASM-via-host **1,4-2,2× plus rapide que le JS** ; Python **65-238×** plus lent |
 | **Mémoire (RSS pic)** | natif **3,8** · wasmtime **14,4** · wazero **16,1** · Python **16,3** · Node **40,5** · host WASM **41,4** MB | ✅ un runtime WASM dédié coûte **2,5-3× moins que Node**, stable entre moteurs ; le plugin = **1 Mo** de mémoire linéaire |
 | **Taille du plugin** | plugin réactif **160 o** (vs 88 064 o natif, 991 o js, 135 641 o commande WASI avec std Rust) | ✅ un *plugin* minimal = **160 o** ; le poids vient du runtime/std, pas du plugin |
-| **Isolation** | Exp 003/005 : imports refusés (`deny-by-default`), 2 barrières indépendantes ; Exp 011-012 : lecture/écriture sandboxées (évasion `../` refusée, `evil.txt` jamais créé — 3 moteurs) | ✅ |
-| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) + **capabilities WASI** (Exp 011 : grant → `ok`, évasion → refus, aucun accord → refus, 9/9 sur 3 moteurs ; Exp 012 : écriture rw ok / hors-preopen refusée / ro=`:ro` bloqué chez wazero) | ✅ (applicatif + système, lecture+écriture) |
+| **Isolation** | Exp 003/005 : imports refusés (`deny-by-default`), 2 barrières indépendantes ; Exp 011-012 : lecture/écriture sandboxées (évasion `../` refusée, `evil.txt` jamais créé — 3 moteurs) ; **Exp 018** : fs deny lisible **statiquement** dans le binaire ; **Exp 020** : coupure **fuel/timeout** (DoS 60,2 s → 313 ms) | ✅ |
+| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = ["wasi:filesystem"]`, **double verrou** : aucun fichier sans `HOUETOR_PREOPENS`) + **capabilities WASI** (Exp 011 : grant → `ok`, évasion → refus, aucun accord → refus, 9/9 sur 3 moteurs ; Exp 012 : écriture rw ok / hors-preopen refusée / ro=`:ro` bloqué chez wazero) | ✅ (applicatif + système, lecture+écriture) |
 | **Temps d'installation / mise à jour** | Exp 008 : install **18,5 ms** fs net, update (v1→v2 + archivage) **24,7 ms**, remove **14,2 ms** (wall ≈ 90-100 ms avec spawn Node 73 ms) | ✅ local ≈ dizaines de ms |
 | **Retrait / versions / install** | Exp 003 (fonctionnel : `.history/`, refus doublon) + Exp 008 (chronométré) | ✅ |
 | **Portabilité** | même fichier exécuté sur **2 OS** (Windows, Linux/WSL2) par **7 combinaisons** exécuteur×OS — **3 moteurs** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat `1134903170` (Exp 007+010, `portability.json` + `portability_os.json`) | ✅ **multi-OS démontrée** (macOS/navigateur = suite) |
-| **Complexité d'intégration** | hôte ≈ 250 lignes JS, 0 dépendance ; bridge MCP ≈ 150 lignes, 0 dépendance | ✅ faible |
-| **Gestion des dépendances** | imports refusés sauf permissions explicites ; WIT/composants = suite | 🟡 |
+| **Complexité d'intégration** | hôte ≈ **725** lignes JS (modules + composants + limites), 0 dépendance ; bridge MCP ≈ **229** lignes, 0 dépendance | ✅ faible |
+| **Gestion des dépendances** | imports refusés sauf permissions explicites ; **surface d'imports + WIT lus DANS le binaire**, refus statique si non déclarée (Exp 018) | ✅ |
 
 ## 5. Réponse à l'étude §8 (« meilleur qu'un plugin natif/Python/JS ? »)
 
-**Avec un runtime WASM dédié, l'écart au natif tombe à ≈ 1,5× (médiane ; fourchette 0,6-1,9× — parfois égalité, cf. Exp 009)**, contre 1,5-3,4× quand le même plugin passe par l'hôte Node (surcoût : frontière JS↔WASM + boucle hôte). Le WASM n'est jamais vainqueur brut, mais c'est le seul format qui cumule :
+**Avec un runtime WASM dédié, l'écart au natif tombe à ≈ 1,5× (médiane ; fourchette 0,6-1,9× — parfois égalité, cf. Exp 009)**, contre 1,5-3,4× quand le même plugin passe par l'hôte Node (surcoût : frontière JS↔WASM + boucle hôte). **Prudence de lecture** : la borne basse 0,6× (WASM « plus rapide » que le natif) relève du **bruit de mesure** (§6), pas d'un gain réel — on retient la **médiane ≈ 1,5×** et la stabilité du ratio. Le WASM n'est jamais vainqueur brut, mais c'est le seul format qui cumule :
 
 1. **vs Natif** : ≈ 1,5× de vitesse **en échange de** portabilité (même binaire sur 3 moteurs), sandbox par construction, artefact **160 o** vs 88 Ko, et **aucune plateforme par cible**.
 2. **vs JS** : WASM est **1,4-2,2× plus rapide** à l'exécution (host : 24,5 vs 34,3 ns en canonique) **avec une sandbox** ; le JS a une startup rapide mais aucune isolation par défaut.
@@ -137,7 +153,7 @@ Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (upda
 - **`wall_ms` = spawn inclus** : comparer les « wall » entre runtimes de startup différent est trompeur → raison d'exister de `compute_ms`.
 - **`first_call_us`** : JIT/compile inclus (JS ≈ 29-63 µs, wasmtime ≈ 4-10 µs avec init WASI, host ≈ 0,8-2 µs = compile du plugin mesurée à part dans `cold_load_ms`).
 - **Artefacts non comparables en taille** : `fib-wasi.wasm` (135 Ko) embarque std Rust + WASI ; le **plugin 160 o** est le vrai réflexe « plugin ».
-- **Variabilité inter-campagnes (Exp 009)** : **5 campagnes le même jour** → absolus ×2-×3 (nativ 7,2-17,8 ns ; wasmtime 9,5-27,2 ns) selon fréquence/charge OS/JIT ; **ratios stables** (c'est ce qu'on publie) ; artefacts et RSS stables à ±5 %. Méthode : `BENCH_RUNS=9` + fourchettes, jamais un point unique.
+- **Variabilité inter-campagnes (Exp 009)** : **5 campagnes le même jour** → absolus ×2-×3 (nativ 7,2-17,8 ns ; wasmtime 9,5-27,2 ns) selon fréquence/charge OS/JIT ; **ratios stables** (c'est ce qu'on publie) ; artefacts et RSS stables à ±5 %. Méthode : `BENCH_RUNS=9` + fourchettes, jamais un point unique. **Conséquence directe** : une mesure isolée en dehors des fourchettes (ex. ratio 0,6×) est du **bruit**, pas un résultat — ne jamais en tirer « WASM plus rapide que le natif ».
 
 ## 7. Reproductibilité
 
@@ -177,6 +193,14 @@ node "prototype\bench\registry_test.mjs"
 node "prototype\bench\sig_test.mjs"
 node prototype\bench\wasi_caps.mjs
 node prototype\bench\wasi_write.mjs
+
+# 9. Composants WIT (Exp 018-019) : typage + capabilities statiques + outils MCP typés → component_test.json (20/20)
+node "prototype\bench\component_test.mjs"
+powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\samples\witcalc\build.ps1"   # rebuild du composant (wit-bindgen + cargo)
+
+# 10. Isolation temporelle (Exp 020) : fuel/timeout, plugin malveillant → fuel_test.json (12/12, ~70 s)
+node "prototype\bench\fuel_test.mjs"
+powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\samples\spinhog\build.ps1"
 ```
 
-Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K`. wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/`.
+Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K` ; limites d'exécution `HOUETOR_FUEL`, `HOUETOR_TIMEOUT` (Exp 020, à déconnecter après mesure) ; montage fs `HOUETOR_PREOPENS` (Exp 018). wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/` (avec `wit-bindgen` et `wasm-tools` au même endroit).

@@ -19,18 +19,20 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 2. `phase1_etat_de_l_art.md` — **fait** (2026-10-04)
 3. `docs-learning/ROADMAP.md` — avancement des 4 phases
 4. `docs-learning/LEARNING_STATE.md` — **état actuel + point de reprise**
-5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 016**)
+5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 020**)
 6. `conclusion.md` — **réponses aux 8 questions finales §11 + verdict hypothèse §9**
 
-## 3. État en bref (contrôle 2026-10-04, session 1 — fin de session)
+## 3. État en bref (contrôle 2026-10-04, sessions 1+2 — fin de session)
 
 - **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` (branche `main`, tout poussé).
 - **Phase 1 (état de l'art) : FAITE** → `phase1_etat_de_l_art.md` (mécanique ✅ / écosystémique ❌).
 - **Phase 2 (cartographie) : FAITE** → `phase2_cartographie.md` (8 domaines A–H, sources datées ; 8 contrats hétérogènes → question C confirmée).
 - **Phase 3 (HOUETOR Plugin Host) : FAITE** → `prototype/host/host.mjs` + `phase3_measures.md` (Exp 003 = 8/8 étapes §4 ; Exp 004+006+009 = comparatif §8 **5 jambes**, campagne canonique n=9 : natif 7,2 · wasmtime 13,9 · WASM-Node 24,5 · JS 34,3 · Python 1 594 ns/appel, **fourchettes sur 5 campagnes** Exp 009 ; RSS : wasmtime 14,4 Mo vs Node 40,5 Mo ; **Exp 007+010 = portabilité : même binaire sur 2 OS (Windows+Linux/WSL2), 4 exécuteurs, 3 moteurs, même résultat** → `portability.json` + `portability_os.json` ; **Exp 008 = cycle de vie chronométré : install 18,5 / update 24,7 / remove 14,2 ms fs net** → `lifecycle.json` ; **Exp 011+012 = capabilities fichier WASI (lecture/écriture) : grant ok / évasion refusée / aucun accord refusé / ro bloqué — 21 checks sur 3 moteurs** → `wasi_caps.json` + `wasi_write.json` ; **Exp 013 = distribution : registre local + install-url HTTP (découverte → téléchargement → validation → mise à jour versionnée) — 11/11 checks, install 224 ms** → `registry_test.json` ; **Exp 014 = intégrité : épinglage sha256 (obligatoire à distance, vérifié à chaque chargement + avant copie), altération détectée — 15/15 checks** ; **Exp 016 = provenance Ed25519 : `manifest.sig` + `HOUETOR_TRUST_KEYS`, install distant = sha256 + sig — 12/12 checks** → `sig_test.json`).
-- **Phase 4 (pont WASM × MCP) : POC FAIT** → `prototype/mcp/bridge.mjs` (test 8/8, Exp 005 ; `tools/list` généré auto depuis les manifestes ; **Exp 015 = filtrage policy allow/deny via `HOUETOR_MCP_POLICY`, fail-closed, 9/9** → `policy_test.json`).
+- **Phase 4 (pont WASM × MCP) : POC FAIT** → `prototype/mcp/bridge.mjs` (test 8/8, Exp 005 ; `tools/list` généré auto depuis les manifestes ; **Exp 015 = filtrage policy allow/deny via `HOUETOR_MCP_POLICY`, fail-closed, 9/9** → `policy_test.json` ; **Exp 019 = outils typés pour composants : `inputSchema` à propriétés nommées issues du WIT `{a: number, b: number}`, `tools/call` nommé → positionnel + refus paramètre manquant — régressions 8/8 + 9/9**).
+- **Exp 018 (composants WIT)** : plugin `witcalc` (composant `houetor:calc/calc@0.1.0`, 94 668 o) — `host wit`/`host types` lisent **WIT + capabilities dans le binaire** (`wasm-tools component wit`), exécution **WAVE** (`add(2, 3.5)` → 5.5), refus de type/arité avant exécution, **deny-by-default statique fs** + double verrou `HOUETOR_PREOPENS` → **20/20** `prototype/bench/component_test.json`.
+- **Exp 020 (anti-DoS)** : `HOUETOR_FUEL`/`HOUETOR_TIMEOUT` → `-W fuel=`/`-W timeout=` — plugin malveillant `spinhog` (boucle infinie) : **60,2 s sans limites → coupé en 313 ms (fuel) / 500 ms (timeout)**, appels légitimes intacts sous la même limite, valeurs invalides = refus fail-closed → **12/12** `prototype/bench/fuel_test.json`.
 - **Conclusion §11 : ÉCRITE** → `conclusion.md` (hypothèse §9 confirmée côté technique, nuancée côté écosystème).
-- **Outillage local (2026-10-04)** : wasmtime **49.0.2** (Windows + Linux/WSL2) · **wazero 1.12** (Exp 007/010, `%TEMP%\opencode\wazero\` + `~/tools` WSL) · **WSL2 Ubuntu 26.04** (8 cœurs) · Rust **1.99.0** (+ wasm32) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · Wasmer 7.5 = non fonctionnel ici · **aucun GPU (inutile)** · **attention : shells persistants n'ont pas les PATH récents → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~\.local\bin\wasmtime-*`)**.
+- **Outillage local (2026-10-04)** : wasmtime **49.0.2** (Windows + Linux/WSL2) · **wazero 1.12** (Exp 007/010, `%TEMP%\opencode\wazero\` + `~/tools` WSL) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · **WSL2 Ubuntu 26.04** (8 cœurs) · Rust **1.99.0** (+ wasm32, cible `wasm32-wasip2`) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · Wasmer 7.5 = non fonctionnel ici · **aucun GPU (inutile)** · **attention : shells persistants n'ont pas les PATH récents → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~\.local\bin\wasmtime-*`, `~\.local\bin\wit-bindgen.exe`, `~\.local\bin\wasm-tools.exe`)**.
 
 ## 4. Réponse rapide à la question « GPU en ligne ? »
 
@@ -44,12 +46,14 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 4. Fichiers d'étude en **français** ; code/CLI en anglais.
 5. `LEARNING_STATE.md` mis à jour avant fin de session ; expériences tracées dans `EXPERIMENTS_LOG.md` (format Exp 00N).
 6. Phase 3 : toute mesure du prototype passe par un script reproductible (pas de chiffre « à la main »).
+7. **Source de vérité des chiffres** = `phase3_measures.md` + les JSON bruts (`results.json`, `fuel_test.json`, …) ; les autres docs (README, ROADMAP, LEARNING_STATE, conclusion) ne font que **s'y référer** — ne jamais recopier un chiffre sans y être renvoyé (les copies divergent).
 
 ## 6. Commandes de base
 
 ```powershell
 # État de l'outillage (redémarrer le shell après installation si besoin)
 wasmtime --version ; cargo --version ; rustc --version ; node --version
+# (chemins absolus si shell ancien : ~\.local\bin\wasmtime-* · wit-bindgen.exe · wasm-tools.exe)
 
 # HOUETOR Plugin Host (Phase 3)
 node "prototype\host\host.mjs" list
@@ -63,6 +67,18 @@ node "prototype\host\host.mjs" install-url <baseURL>             # Exp 013 : ins
 node "prototype\host\host.mjs" hash "prototype\plugins\hello"    # Exp 014 : empreinte sha256 du wasm (rédaction manifeste)
 node "prototype\host\host.mjs" keygen priv.pem pub.pem           # Exp 016 : paire Ed25519 (publique → HOUETOR_TRUST_KEYS)
 node "prototype\host\host.mjs" sign <dossier-plugin> priv.pem    # Exp 016 : manifest.sig (octets bruts du manifeste)
+
+# Composants WIT (Exp 018)
+node "prototype\host\host.mjs" wit witcalc                       # WIT lue DANS le binaire (wasm-tools component wit)
+node "prototype\host\host.mjs" types witcalc                     # signatures JSON (f64/u32/string) → alimente le bridge
+node "prototype\host\host.mjs" run witcalc add 2 3.5             # exécution WAVE → 5.5 (typage contrôlé)
+$env:HOUETOR_PREOPENS='{"data":"<chemin\vers\dossier>"}'; node "prototype\host\host.mjs" run witcalc read-file data/input.txt  # SEUL moyen d'ouvrir un fichier
+powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\samples\witcalc\build.ps1"   # rebuild composant (wit-bindgen + cargo wasm32-wasip2)
+
+# Isolation temporelle (Exp 020)
+$env:HOUETOR_FUEL="1000000"; node "prototype\host\host.mjs" run witcalc add 2 3.5   # limite fuel (entier > 0)
+$env:HOUETOR_TIMEOUT="200ms"; node "prototype\host\host.mjs" run <composant> <fn>    # limite temps (us|ms|s) — valeurs invalides = refus
+Remove-Item Env:\HOUETOR_FUEL, Env:\HOUETOR_TIMEOUT                                   # toujours déconnecter après usage
 
 # Comparatif §8 (Phase 3) — 5 jambes ; campagne canonique : BENCH_RUNS=9 (Exp 009)
 $env:BENCH_RUNS="9"; node "prototype\bench\run_bench.mjs"   # → results.json + table markdown
@@ -80,6 +96,10 @@ node "prototype\bench\sig_test.mjs"           # Exp 016 : signature Ed25519 mani
 # Pont MCP (Phase 4)
 node "prototype\mcp\test_bridge.mjs"          # 8/8 attendus → transcript.json
 node "prototype\mcp\policy_test.mjs"          # Exp 015 : filtrage policy (9/9) → policy_test.json
+
+# Tests des expériences récentes
+node "prototype\bench\component_test.mjs"     # Exp 018+019 : composant WIT + outils typés (20/20) → component_test.json
+node "prototype\bench\fuel_test.mjs"          # Exp 020 : fuel/timeout anti-DoS (12/12, ~70 s dont 60 s de « avant ») → fuel_test.json
 
 # Rebuild d'un plugin (dossier du crate)
 cargo build --release --target wasm32-unknown-unknown

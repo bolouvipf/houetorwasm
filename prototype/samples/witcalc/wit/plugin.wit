@@ -1,0 +1,12 @@
+package houetor:calc@0.1.0;
+
+interface calc {
+  add: func(a: f64, b: f64) -> f64;
+  fibonacci: func(n: u32) -> u64;
+  greet: func(name: string) -> string;
+  read-file: func(path: string) -> result<string, string>;
+}
+
+world plugin {
+  export calc;
+}

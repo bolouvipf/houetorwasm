@@ -143,6 +143,75 @@
               },
               "required": []
             }
+          },
+          {
+            "name": "witcalc_add",
+            "description": "Composant WASM witcalc@1.0.0 — a: f64, b: f64 → f64 (interface WIT lue dans le binaire ; WASI deny-by-default, permissions : wasi:filesystem)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "a": {
+                  "type": "number",
+                  "description": "paramètre WIT `a: f64`"
+                },
+                "b": {
+                  "type": "number",
+                  "description": "paramètre WIT `b: f64`"
+                }
+              },
+              "required": [
+                "a",
+                "b"
+              ]
+            }
+          },
+          {
+            "name": "witcalc_fibonacci",
+            "description": "Composant WASM witcalc@1.0.0 — n: u32 → u64 (interface WIT lue dans le binaire ; WASI deny-by-default, permissions : wasi:filesystem)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "n": {
+                  "type": "integer",
+                  "description": "paramètre WIT `n: u32`"
+                }
+              },
+              "required": [
+                "n"
+              ]
+            }
+          },
+          {
+            "name": "witcalc_greet",
+            "description": "Composant WASM witcalc@1.0.0 — name: string → string (interface WIT lue dans le binaire ; WASI deny-by-default, permissions : wasi:filesystem)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "paramètre WIT `name: string`"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          {
+            "name": "witcalc_read-file",
+            "description": "Composant WASM witcalc@1.0.0 — path: string → result<string, string> (interface WIT lue dans le binaire ; WASI deny-by-default, permissions : wasi:filesystem)",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "paramètre WIT `path: string`"
+                }
+              },
+              "required": [
+                "path"
+              ]
+            }
           }
         ]
       }
@@ -174,7 +243,7 @@
         "content": [
           {
             "type": "text",
-            "text": "{\n  \"plugin\": \"hello@1.0.1\",\n  \"call\": \"add\",\n  \"args\": [\n    \"2\",\n    \"3.5\"\n  ],\n  \"result\": 5.5,\n  \"timings_ms\": {\n    \"load\": 5.984,\n    \"compile\": 4.333,\n    \"instantiate\": 0.324,\n    \"call\": 0.5464\n  },\n  \"wasm_bytes\": 160,\n  \"memory_bytes\": 1048576,\n  \"imports_granted\": 0\n}"
+            "text": "{\n  \"plugin\": \"hello@1.0.1\",\n  \"call\": \"add\",\n  \"args\": [\n    \"2\",\n    \"3.5\"\n  ],\n  \"result\": 5.5,\n  \"timings_ms\": {\n    \"load\": 2.271,\n    \"compile\": 0.644,\n    \"instantiate\": 0.146,\n    \"call\": 0.1709\n  },\n  \"wasm_bytes\": 160,\n  \"memory_bytes\": 1048576,\n  \"imports_granted\": 0\n}"
           }
         ]
       }

@@ -1,6 +1,6 @@
 # Phase 4 — Pont WASM × MCP (étude §5)
 
-> Date : **2026-10-04** · Implémentation : `prototype/mcp/{bridge.mjs,test_bridge.mjs}` · Test : **8/8 étapes OK** (`transcript.json`).
+> Date : **2026-10-04** · Implémentation : `prototype/mcp/{bridge.mjs,test_bridge.mjs}` · Test : **8/8 étapes OK** (`transcript.json`) + **outils typés (Exp 019, `component_test.json` 20/20)**.
 > Question expérimentale de l'étude §5 : *« Un composant WASM peut-il être transformé automatiquement ou semi-automatiquement en outil MCP ? »*
 
 ## 1. Architecture (schéma de l'étude §5 respecté)
@@ -26,9 +26,14 @@
 
 ```text
 outils générés automatiquement : ["hello_add","hello_fibonacci","hello_plugin_version","needy_do_log","needy_plugin_version"]
+# + depuis l'Exp 018/019 (plugin composant witcalc installé) :
+# ["witcalc_add","witcalc_fibonacci","witcalc_greet","witcalc_read-file"]  → 9 outils au total
 ```
 
-Chaque tool porte une description auto-générée avec plugin, version, permissions accordées, et un `inputSchema` JSON (`args: number[]`). **Installation d'un plugin = apparition immédiate de ses outils pour l'agent**, sans reconfiguration du bridge.
+Chaque tool porte une description auto-générée avec plugin, version, permissions accordées, et un `inputSchema` JSON. **Installation d'un plugin = apparition immédiate de ses outils pour l'agent**, sans reconfiguration du bridge.
+
+- **module core** (legacy) : `inputSchema = {args: number[]}` ;
+- **composant WIT** (Exp 019) : `inputSchema = {a: number, b: number}` — **propriétés nommées typées**, `required`, types WIT dans la description (voir §5ter).
 
 ## 3. Preuves brutes (test reproductible : `node prototype\mcp\test_bridge.mjs`)
 
@@ -55,8 +60,8 @@ Transcript complet (requêtes/réponses JSON-RPC brutes) : `prototype/mcp/transc
 
 | Ce qui est automatique aujourd'hui ✅ | Ce qui reste manuel / limité ⬜ |
 |---|---|
-| Découverte des plugins + de leurs exports (manifeste validé par le host) | **Typage faible** : seuls `number[]` passent (Canonical ABI / WIT donneraient types, chaînes, structs) |
-| Génération du nom d'outil, de la description, du `inputSchema` | **Sémantique** : l'agent voit `hello_add` mais ignore sauf description que c'est l'addition (pas de doc WIT) |
+| Découverte des plugins + de leurs exports (manifeste validé par le host) | ~~**Typage faible** : seuls `number[]` passent~~ → **corrigé pour les composants (Exp 019)** : propriétés nommées typées issues du WIT ; modules core = `args[]` (legacy ABI) |
+| Génération du nom d'outil, de la description, du `inputSchema` | **Sémantique** : l'agent voit `hello_add` et les **types** WIT (`paramètre WIT a: f64`), mais pas le sens métier ni `resource`/`variant` |
 | Publication/rétraction vivante (install/remove → tools/list change) | ~~Granularité : filtrage par policy n'existe pas~~ → **fait (Exp 015)** ; reste : policy dynamique/contextuelle (par agent, par session) |
 | Sécurité préservée (le host refuse ce qu'il doit refuser **même si l'outil est exposé**) | **Effets de bord** : fonctions avec état/ressources (WIT `resource`) non gérées |
 
@@ -87,6 +92,24 @@ Un agent IA (ou un attaquant qui pilote l'agent) ne peut donc pas « forcer » u
 
 Sémantique : allowlist par nom exact d'outil (`<plugin>_<fonction>`) ; deny list **prioritaire** ; sans variable `HOUETOR_MCP_POLICY` → mode « open » (découverte complète, = mode démo, rétrocompat 8/8) ; une policy **demandée mais illisible → fail-closed** (tout refusé).
 
+## 5ter. Outils typés depuis le WIT (Exp 019)
+
+Le bridge interroge `host types <plugin>` (signatures lues **dans le binaire** du composant) et génère pour chaque fonction un `inputSchema` à **propriétés nommées typées** ; `tools/call` mappe les arguments nommés → positionnels (ordre WIT) et refuse explicitement un paramètre requis manquant. Le host revalide ensuite le **type** côté WAVE (défense en profondeur préservée).
+
+**Preuves brutes** (`component_test.json`, bloc Exp 019 — régressions `test_bridge` **8/8**, `policy_test` **9/9**) :
+
+```text
+✅ B1 inputSchema composant nommé+typé (pas de args[]) — {"type":"object","properties":{"a":{"type":"number","description":"paramètre WIT `a: f64`"},"b":{"type":"number","description":"paramètre WIT `b: f64`"}},"required":["a","b"]}
+✅ B1b régression : module core garde le schéma legacy args[] — {"type":"object","properties":{"args":{"type":"array","items":{"type":"number"} …
+✅ B2 arguments NOMMÉS → chaîne typée — result=Bonjour, HOUETOR !
+✅ B3 witcalc_add {"a":2,"b":3.5} → 5.5 — result=5.5
+✅ B4 paramètre manquant → refus bridge — paramètre manquant : b (f64)
+✅ B5 type invalide → refus host (type WIT) — [host] ERREUR : type WIT : add attend f64, reçu « x » — refusé avant exécution
+✅ B6 régression hello_add (module core) → 5.5 — result=5.5
+```
+
+**Lecture** : la limite « types `number[]` » de la §4 est **comblée côté schéma et arguments** pour les composants — la source unique est le WIT du binaire (plus de dérive possible entre plugin et outil). **Limite** : JSON Schema n'exprime ni `result<T,E>`, ni `variant`, ni ressources ; la vérification de type se fait à l'appel, pas à la découverte.
+
 ## 6. Contraste avec l'état de l'art (Phase 2)
 
 - **Extism** expose déjà des plugins en serveurs HTTP ; **Fastly** fait du MCP côté edge — mais nous n'avons trouvé **aucun projet public générant automatiquement `tools/list` MCP depuis des manifestes de plugins WASM** (recherche Phase 2, 2026-10-04). Notre pont est donc une contribution locale originale, même sommaire.
@@ -95,5 +118,5 @@ Sémantique : allowlist par nom exact d'outil (`<plugin>_<fonction>`) ; deny lis
 ## 7. Suite (non réalisée)
 
 - Chaînage complet avec un **vrai client MCP** (Claude Desktop / npx `@modelcontextprotocol/inspector`) — le bridge parle le protocole standard, testable tel quel.
-- Types riches via **WIT/Component Model** (strings, records). ~~Filtrage d'outils par policy~~ → **fait (Exp 015, §5bis)**.
+- ~~Types riches via **WIT/Component Model**~~ → **fait pour les composants (Exp 019, §5ter)** ; reste `resource`/`variant`/`enum` + la documentation sémantique. ~~Filtrage d'outils par policy~~ → **fait (Exp 015, §5bis)**.
 - Ponter vers **wasmtime** (hôte Rust) pour éliminer Node du chemin (mesures RSS).

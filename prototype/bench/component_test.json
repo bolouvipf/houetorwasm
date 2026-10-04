@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-04T16:52:57.048Z",
+  "machine": "win32 x64 v24.15.0",
+  "component": "witcalc@1.0.0 (houetor:calc/calc@0.1.0)",
+  "tools": {
+    "wit-bindgen": "0.62.0",
+    "wasm-tools": "1.261.0",
+    "wasmtime": "49.0.2"
+  },
+  "timings_ms": {
+    "wit_ms": 936.2,
+    "wall_wasmtime_ms": 67.53
+  },
+  "checks": [
+    {
+      "id": "prérequis : witcalc déjà installé",
+      "pass": true,
+      "detail": "plugins/witcalc"
+    },
+    {
+      "id": "W1 WIT lue dans le binaire",
+      "pass": true,
+      "detail": "  export houetor:calc/calc@0.1.0;"
+    },
+    {
+      "id": "W2 signatures typées lues dans le binaire (f64/u32/string/result)",
+      "pass": true,
+      "detail": "{\"add\":{\"params\":[{\"name\":\"a\",\"type\":\"f64\"},{\"name\":\"b\",\"type\":\"f64\"}],\"returns\":\"f64\"},\"fibonacci\":{\"params\":[{\"name\":\"n\",\"type\":\"u32\"}],\"returns\":\"u64\"},\"greet\":{\"params\":[{\"name\":\"name\",\"type\":\"str"
+    },
+    {
+      "id": "W3 surface de capabilities visible AVANT exécution",
+      "pass": true,
+      "detail": "wasi:filesystem/types@0.2.12, wasi:filesystem/preopens@0.2.12"
+    },
+    {
+      "id": "W4 add(2, 3.5) = 5.5 (f64)",
+      "pass": true,
+      "detail": "result=5.5 wall=67.53ms"
+    },
+    {
+      "id": "W5 fibonacci(45) = 1134903170 (portabilité composant)",
+      "pass": true,
+      "detail": "result=1134903170"
+    },
+    {
+      "id": "W6 greet → chaîne WAVE typée",
+      "pass": true,
+      "detail": "result=\"Bonjour, HOUETOR !\""
+    },
+    {
+      "id": "W7 type invalide refusé par le typage WAVE",
+      "pass": true,
+      "detail": "[host] ERREUR : type WIT : add attend f64, reçu « x » — refusé avant exécution"
+    },
+    {
+      "id": "W8 arité contrôlée par la signature WIT",
+      "pass": true,
+      "detail": "[host] ERREUR : witcalc : add attend 2 paramètre(s) [a: f64, b: f64], reçu 1"
+    },
+    {
+      "id": "W9 sans montage → err os 44 (deny-by-default)",
+      "pass": true,
+      "detail": "err(\"No such file or directory (os error 44)\")"
+    },
+    {
+      "id": "W10 avec HOUETOR_PREOPENS → ok contenu",
+      "pass": true,
+      "detail": "ok(\"BONJOUR-WASM-CAP\")"
+    },
+    {
+      "id": "W11 évasion ../ refusée, secret non divulgué",
+      "pass": true,
+      "detail": "err(\"Operation not permitted (os error 63)\")"
+    },
+    {
+      "id": "W12 composant fs sans permission déclarée → refus statique",
+      "pass": true,
+      "detail": "[host] ERREUR : witcalc-nofs : composant importe wasi:filesystem (visible dans le binaire) mais le manifeste ne déclare pas \"wasi:filesystem\" — refusé (deny-by-default statique)"
+    },
+    {
+      "id": "B1 inputSchema composant nommé+typé (pas de args[])",
+      "pass": true,
+      "detail": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\",\"description\":\"paramètre WIT `a: f64`\"},\"b\":{\"type\":\"number\",\"description\":\"paramètre WIT `b: f64`\"}},\"required\":[\"a\",\"b\"]}"
+    },
+    {
+      "id": "B1b régression : module core garde le schéma legacy args[]",
+      "pass": true,
+      "detail": "{\"type\":\"object\",\"properties\":{\"args\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"description\":\"Arguments positionnels (nombres) passés à la fonction WASM\",\"default\":[]}},\"required\":[]}"
+    },
+    {
+      "id": "B2 arguments NOMMÉS → chaîne typée",
+      "pass": true,
+      "detail": "result=Bonjour, HOUETOR !"
+    },
+    {
+      "id": "B3 witcalc_add {\"a\":2,\"b\":3.5} → 5.5",
+      "pass": true,
+      "detail": "result=5.5"
+    },
+    {
+      "id": "B4 paramètre manquant → refus bridge",
+      "pass": true,
+      "detail": "paramètre manquant : b (f64)"
+    },
+    {
+      "id": "B5 type invalide → refus host (type WIT)",
+      "pass": true,
+      "detail": "[host] ERREUR : type WIT : add attend f64, reçu « x » — refusé avant exécution"
+    },
+    {
+      "id": "B6 régression hello_add (module core) → 5.5",
+      "pass": true,
+      "detail": "result=5.5"
+    }
+  ],
+  "all_checks_pass": true
+}

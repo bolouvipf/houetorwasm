@@ -68,9 +68,27 @@ function discoverPlugins() {
         size: Number(m[3]),
         exports: m[4].split(",").map((s) => s.trim()).filter(Boolean),
         permissions: m[5].split(",").map((s) => s.trim()).filter(Boolean),
+        type: /type=component/.test(line) ? "component" : "module",
       });
   }
   return out;
+}
+
+// --- Signatures typées lues par le host DANS le composant (Exp 018/019) ---
+const WIT_TO_JSON = {
+  f32: "number", f64: "number",
+  u8: "integer", u16: "integer", u32: "integer", u64: "integer",
+  s8: "integer", s16: "integer", s32: "integer", s64: "integer",
+  bool: "boolean", char: "string", string: "string",
+};
+function componentFunctions(pluginName) {
+  const r = hostRun(["types", pluginName]);
+  if (r.status !== 0) return null;
+  try {
+    return JSON.parse(r.stdout).functions ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // --- Génération automatique outils MCP depuis les manifestes ---
@@ -78,29 +96,51 @@ function discoverPlugins() {
 function buildTools({ applyPolicy = true } = {}) {
   const tools = [];
   for (const p of discoverPlugins()) {
+    const sigs = p.type === "component" ? componentFunctions(p.name) : null;
     for (const fn of p.exports) {
       const name = `${p.name}_${fn}`;
       if (applyPolicy && !policyAllows(name)) continue;
+      const sig = sigs?.[fn];
+      const inputSchema = sig
+        ? {
+            // Composant WIT : paramètres NOMMÉS et TYPÉS (lus dans le binaire)
+            type: "object",
+            properties: Object.fromEntries(
+              sig.params.map((prm) => [
+                prm.name,
+                { type: WIT_TO_JSON[prm.type] ?? "string", description: `paramètre WIT \`${prm.name}: ${prm.type}\`` },
+              ])
+            ),
+            required: sig.params.map((prm) => prm.name),
+          }
+        : {
+            // Module core : ABI maison sans typage (number[])
+            type: "object",
+            properties: {
+              args: {
+                type: "array",
+                items: { type: "number" },
+                description: "Arguments positionnels (nombres) passés à la fonction WASM",
+                default: [],
+              },
+            },
+            required: [],
+          };
       tools.push({
         name,
-        description:
-          `Plugin WASM ${p.name}@${p.version} — fonction exportée « ${fn} » ` +
-          `(découverte automatique depuis manifest.json ; sandbox deny-by-default, ` +
-          `permissions accordées : ${p.permissions.join(", ") || "aucune"})`,
-        inputSchema: {
-          type: "object",
-          properties: {
-            args: {
-              type: "array",
-              items: { type: "number" },
-              description: "Arguments positionnels (nombres) passés à la fonction WASM",
-              default: [],
-            },
-          },
-          required: [],
-        },
+        description: sig
+          ? `Composant WASM ${p.name}@${p.version} — ${sig.params
+              .map((prm) => `${prm.name}: ${prm.type}`)
+              .join(", ") || "aucun paramètre"} → ${sig.returns || "void"} (interface WIT lue dans le binaire ; WASI deny-by-default, permissions : ${
+              p.permissions.join(", ") || "aucune"
+            })`
+          : `Plugin WASM ${p.name}@${p.version} — fonction exportée « ${fn} » ` +
+            `(découverte automatique depuis manifest.json ; sandbox deny-by-default, ` +
+            `permissions accordées : ${p.permissions.join(", ") || "aucune"})`,
+        inputSchema,
         _plugin: p.name,
         _fn: fn,
+        _params: sig ? sig.params : null,
       });
     }
   }
@@ -127,7 +167,7 @@ function handle(req) {
         return {};
       case "tools/list":
         return {
-          tools: buildTools().map(({ _plugin, _fn, ...t }) => t), // champs internes masqués
+          tools: buildTools().map(({ _plugin, _fn, _params, ...t }) => t), // champs internes masqués
         };
       case "tools/call": {
         // vue complète : un outil existe (manifeste) mais peut être filtré par policy
@@ -136,8 +176,22 @@ function handle(req) {
         if (!tool) return { content: [{ type: "text", text: `outil inconnu : ${params?.name}` }], isError: true };
         if (!policyAllows(tool.name))
           return { content: [{ type: "text", text: policyStatus(tool.name) }], isError: true };
-        const args = Array.isArray(params?.arguments?.args) ? params.arguments.args.map(Number) : [];
-        const r = hostRun(["run", tool._plugin, tool._fn, ...args.map(String)]);
+        let args;
+        if (tool._params) {
+          // Composant WIT : arguments NOMMÉS (selon l'inputSchema) → positionnels, types contrôlés par le host
+          args = [];
+          for (const prm of tool._params) {
+            const v = params?.arguments?.[prm.name];
+            if (v === undefined)
+              return { content: [{ type: "text", text: `paramètre manquant : ${prm.name} (${prm.type})` }], isError: true };
+            if (prm.type === "string" && typeof v !== "string")
+              return { content: [{ type: "text", text: `paramètre ${prm.name} : attendu string, reçu ${typeof v}` }], isError: true };
+            args.push(typeof v === "string" ? v : String(v));
+          }
+        } else {
+          args = Array.isArray(params?.arguments?.args) ? params.arguments.args.map(String) : [];
+        }
+        const r = hostRun(["run", tool._plugin, tool._fn, ...args]);
         const ok = r.status === 0;
         return {
           content: [{ type: "text", text: (ok ? r.stdout : r.stderr).trim() }],

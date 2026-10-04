@@ -1,0 +1,10 @@
+{
+  "name": "witcalc",
+  "version": "1.0.0",
+  "type": "component",
+  "wasm": "witcalc.wasm",
+  "exports": ["add", "fibonacci", "greet", "read-file"],
+  "permissions": ["wasi:filesystem"],
+  "sha256": "0586ed5d2cf1c509b1f3bce72bf464608d75323a24b4717c440bf12345353d68",
+  "description": "Composant WIT houetor:calc/calc@0.1.0 — Exp 018 (types lus dans le binaire)"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "spinhog",
+  "version": "1.0.0",
+  "type": "component",
+  "wasm": "spinhog.wasm",
+  "exports": ["spin"],
+  "permissions": [],
+  "sha256": "1b840b31c87d9076c5388a943a1500f8f74f81291ce5f9d34d2499800dda2566",
+  "description": "Plugin malveillant (boucle infinie) - Exp 020 : preuve fuel/timeout wasmtime"
+}

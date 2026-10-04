@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-04T11:24:22.976Z",
+  "date": "2026-10-04T17:01:59.516Z",
   "machine": "win32 x64 v24.15.0",
   "module": "filewrite.wasm (wasm32-wasip1)",
   "targets": {
@@ -81,7 +81,7 @@
       "target": "data/out.txt",
       "wrote": 13,
       "verify_len": 13,
-      "elapsed_us": 2409.4,
+      "elapsed_us": 2015.5,
       "runs": 3
     },
     {
@@ -101,7 +101,7 @@
       "impl": "filewrite",
       "target": "data/../evil.txt",
       "error": "Operation not permitted (os error 63)",
-      "elapsed_us": 198,
+      "elapsed_us": 168,
       "runs": 3
     },
     {
@@ -113,7 +113,7 @@
       "impl": "filewrite",
       "target": "data/out.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 98.1,
+      "elapsed_us": 81.3,
       "runs": 3
     },
     {
@@ -126,7 +126,7 @@
       "target": "data/out.txt",
       "wrote": 13,
       "verify_len": 13,
-      "elapsed_us": 2427.6,
+      "elapsed_us": 3683.5,
       "runs": 3
     },
     {
@@ -138,7 +138,7 @@
       "impl": "filewrite",
       "target": "data/out.txt",
       "error": "Function not implemented (os error 52)",
-      "elapsed_us": 340.1,
+      "elapsed_us": 334.1,
       "runs": 3
     },
     {
@@ -150,7 +150,7 @@
       "impl": "filewrite",
       "target": "data/../evil.txt",
       "error": "Operation not permitted (os error 63)",
-      "elapsed_us": 145.3,
+      "elapsed_us": 206.4,
       "runs": 3
     },
     {
@@ -162,7 +162,7 @@
       "impl": "filewrite",
       "target": "data/out.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 10.9,
+      "elapsed_us": 11.4,
       "runs": 3
     },
     {
@@ -175,7 +175,7 @@
       "target": "data/out.txt",
       "wrote": 13,
       "verify_len": 13,
-      "elapsed_us": 2765.3,
+      "elapsed_us": 3214,
       "runs": 3
     },
     {
@@ -195,7 +195,7 @@
       "impl": "filewrite",
       "target": "data/../evil.txt",
       "error": "Capabilities insufficient (os error 76)",
-      "elapsed_us": 701.9,
+      "elapsed_us": 926.4,
       "runs": 3
     },
     {
@@ -207,7 +207,7 @@
       "impl": "filewrite",
       "target": "data/out.txt",
       "error": "No such file or directory (os error 44)",
-      "elapsed_us": 586.9,
+      "elapsed_us": 771.6,
       "runs": 3
     }
   ],

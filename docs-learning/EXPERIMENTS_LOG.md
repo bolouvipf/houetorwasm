@@ -534,3 +534,113 @@ Régressions : `registry_test` **15/15**, `test_bridge` **8/8**, `lifecycle` tou
 **Limite honnête :** distribution des clés de confiance = **humaine** (pas de PKI/web-of-trust/TOFU) ; la signature est celle du *manifeste*, pas d'un audit du contenu ; bruit cosmétique connu Node/Windows (`Assertion failed: UV_HANDLE_CLOSING` en stderr sur certains `die()` pendant une session HTTP — code de sortie et contrôles corrects).
 
 **Suite :** WASI réseau, WIT, client MCP tiers, éventuellement hôte wasmtime Rust.
+
+---
+
+## Exp 018 — Composant WIT : typage fort + capabilities lisibles dans le binaire (2026-10-04)
+
+> (L'Exp 017 est restée **réservée, non utilisée** ; la numérotation suit les commentaires de code.)
+
+**Contexte :** audit de session — lacune n°1 : le **Component Model / WIT**, pourtant cœur de l'hypothèse §9 (« le standard sémantique manquant »), n'avait **jamais été exécuté** : tous les plugins étaient des modules core ABI `number[]`.
+
+**Action :**
+- outillage : `wit-bindgen` **0.62.0** + `wasm-tools` **1.261.0** (binaires dans `%USERPROFILE%\.local\bin\`) ;
+- échantillon `prototype/samples/witcalc` : WIT `package houetor:calc@0.1.0` (`add f64`, `fibonacci u32→u64`, `greet string`, `read-file → result<string,string>`) → `cargo build --target wasm32-wasip2` → **composant 94 668 o**, `sha256` épinglé au manifeste (`type: "component"`) ;
+- `host.mjs` : commandes **`wit`** (WIT lue **dans le binaire** via `wasm-tools component wit`) et **`types`** (signatures JSON), exécution par **expression WAVE** (`--invoke add(2, 3.5)`), encodage des arguments selon le type WIT ;
+- **deny-by-default statique** : si le binaire importe `wasi:filesystem/*` alors que le manifeste ne le déclare pas → **refus au chargement** (avant toute exécution) ;
+- **double verrou fs** : `HOST_ALLOWED = ["wasi:filesystem"]` n'accorde **aucun fichier** tant que `HOUETOR_PREOPENS` (JSON `{"guest":"hôte"}`) ne liste pas les montages.
+
+**Preuves brutes** (`prototype/bench/component_test.json`, `all_checks_pass: true`, **20/20**) :
+
+```text
+PASS W1 WIT lue dans le binaire —   export houetor:calc/calc@0.1.0;
+PASS W2 signatures typées lues dans le binaire (f64/u32/string/result) — {"add":{"params":[{"name":"a","type":"f64"},{"name":"b","type":"f64"}],"returns":"f64"} ...
+PASS W3 surface de capabilities visible AVANT exécution — wasi:filesystem/types@0.2.12, wasi:filesystem/preopens@0.2.12
+PASS W4 add(2, 3.5) = 5.5 (f64) — result=5.5 wall=79.692ms
+PASS W5 fibonacci(45) = 1134903170 (portabilité composant) — result=1134903170
+PASS W6 greet → chaîne WAVE typée — result="Bonjour, HOUETOR !"
+PASS W7 type invalide refusé par le typage WAVE — [host] ERREUR : type WIT : add attend f64, reçu « x » — refusé avant exécution
+PASS W8 arité contrôlée par la signature WIT — [host] ERREUR : witcalc : add attend 2 paramètre(s) [a: f64, b: f64], reçu 1
+PASS W9 sans montage → err os 44 (deny-by-default) — err("No such file or directory (os error 44)")
+PASS W10 avec HOUETOR_PREOPENS → ok contenu — ok("BONJOUR-WASM-CAP")
+PASS W11 évasion ../ refusée, secret non divulgué — err("Operation not permitted (os error 63)")
+PASS W12 composant fs sans permission déclarée → refus statique — [host] ERREUR : witcalc-nofs : composant importe wasi:filesystem (visible dans le binaire) mais le manifeste ne déclare pas "wasi:filesystem" — refusé (deny-by-default statique)
+```
+
+**Résultat :**
+- le **contrat est dans le binaire** : interface WIT, types des paramètres/valeurs de retour et surface de capabilities sont inspectables **sans exécuter** une ligne du plugin — c'est la preuve concrète de la Phase 1 §2.2 (« la surface est statiquement inspectable ») ;
+- **typage fort de bout en bout** : argument de type faux ou arité fausse = refus *avant* exécution (W7/W8), pas d'`undefined` silencieux ;
+- `fibonacci(45) = 1134903170` **identique** aux 7 combinaisons module/OS/moteur de l'Exp 007+010 → portabilité étendue aux **composants** ;
+- **fs deny-by-default à 2 niveaux** : le composant qui *mentionne* le filesystem sans permission déclarée ne se charge même pas (W12).
+
+**Limite honnête :** `componentInfo` n'expose que la **première interface exportée** (parsée par expressions régulières) ; `resource`/`variant`/`enum` non gérés ; pas de composition d'instances de composants côté hôte ; le montage fs reste un contrat maison (`HOUETOR_PREOPENS`), seul l'*inspection* du besoin vient du standard.
+
+**Suite :** Exp 019 (pont MCP typé), Exp 020 (fuel/timeout).
+
+---
+
+## Exp 019 — Pont MCP typé : arguments nommés + inputSchema depuis le WIT (2026-10-04)
+
+**Contexte :** lacune Phase 4 documentée (`conclusion.md` §2/§7) : **tous** les outils MCP exposaient `args: number[]` — le typage disparaissait entre le plugin et l'agent.
+
+**Action :** `bridge.mjs` : les plugins `type: "component"` sont découverts via `host types` ; `tools/list` génère un `inputSchema` à **propriétés nommées typées** (ex. `{a: number, b: number}`, `required: [a,b]`, description porteant `paramètre WIT a: f64`) ; `tools/call` mappe les arguments nommés → positionnels (ordre WIT) et **refuse explicitement** tout paramètre requis manquant ; les modules core gardent le schéma legacy `args[]`.
+
+**Preuves brutes** (`component_test.json`, bloc Exp 019, + régressions) :
+
+```text
+PASS B1 inputSchema composant nommé+typé (pas de args[]) — {"type":"object","properties":{"a":{"type":"number","description":"paramètre WIT `a: f64`"},"b":{"type":"number","description":"paramètre WIT `b: f64`"}},"required":["a","b"]}
+PASS B1b régression : module core garde le schéma legacy args[] — {"type":"object","properties":{"args":{"type":"array","items":{"type":"number"} ...
+PASS B2 arguments NOMMÉS → chaîne typée — result=Bonjour, HOUETOR !
+PASS B3 witcalc_add {"a":2,"b":3.5} → 5.5 — result=5.5
+PASS B4 paramètre manquant → refus bridge — paramètre manquant : b (f64)
+PASS B5 type invalide → refus host (type WIT) — [host] ERREUR : type WIT : add attend f64, reçu « x » — refusé avant exécution
+PASS B6 régression hello_add (module core) → 5.5 — result=5.5
+```
+
+Régressions après changement : `test_bridge.mjs` **8/8**, `policy_test.mjs` **9/9** (la politique filtre sur le nom : `witcalc_read-file` exposé mais sans `HOUETOR_PREOPENS` reste sans fichier).
+
+**Résultat :**
+- le schéma MCP **vient du WIT** (source unique : le binaire) → plus de `number[]` pour les composants ; l'agent voit les noms, les types et les types de retour ;
+- défense en profondeur **préservée** : le bridge valide l'arité côté nommé, le host revalide le **type** côté WAVE (B5) ;
+- filtre policy **non impacté** (9/9) — les nouveaux outils entrent dans le même mécanisme allow/deny.
+
+**Limite honnête :** JSON Schema n'exprime ni `result<T,E>`, ni `variant`, ni ressources WIT ; la sémantique métier (« c'est une addition ») reste dans la description libre, pas dans un contrat formel ; le typage est vérifié **à l'appel**, pas à la découverte.
+
+**Suite :** Exp 020 (isolation temporelle).
+
+---
+
+## Exp 020 — Isolation temporelle : fuel + timeout wasmtime, plugin malveillant coupé (2026-10-04)
+
+**Contexte :** lacune n°4 de l'audit : aucune limite d'exécution. Un plugin **hostile** (boucle infinie) bloque l'hôte indéfiniment — l'isolation « sandbox mémoire » ne protège pas du **DoS CPU**.
+
+**Action :**
+- `host.mjs` : **`HOUETOR_FUEL`** (entier > 0 → `-W fuel=N`) + **`HOUETOR_TIMEOUT`** (ex. `200ms` → `-W timeout=`) appliqués sur le chemin **composant** ; valeurs mal formées = **refus avant exécution** (fail-closed) ; limites sur un **module core** (exécution in-process Node, non fuel-limable) = **refus explicite** (jamais d'ignorance silencieuse) ; `bench` sous limite = refusé (mesures faussées) ;
+- échantillon `prototype/samples/spinhog` : composant WIT `houetor:spinhog/guard` avec `spin` = **boucle infinie volontaire** (plugin malveillant de démonstration) ;
+- `prototype/bench/fuel_test.mjs` (12 checks).
+
+**Preuves brutes** (`prototype/bench/fuel_test.json`, `all_checks_pass: true`, **12/12**) :
+
+```text
+✅ F1 sans limites → add 5.5, limits "aucun (illimité)" — result=5.5 limits=aucun (illimité)
+✅ F2 FUEL=1000000 → add(2,3.5)=5.5 (bénin accepté) — result=5.5 limits={"fuel":1000000}
+✅ F3 FUEL=1000000 → spin coupé « fuel épuisé » en < 5 s — exit=1 313ms
+✅ F4 FUEL=1000000 → fibonacci(45)=1134903170 (travail long accepté) — result=1134903170
+✅ F5 HOUETOR_FUEL=abc → refus fail-closed AVANT exécution — [host] ERREUR : witcalc : HOUETOR_FUEL invalide « abc » …
+✅ F6 TIMEOUT=200ms → spin coupé « timeout atteint » en < 5 s — exit=1 500ms
+✅ F7 HOUETOR_TIMEOUT=100 (sans unité) → refus fail-closed
+✅ F8 module core + fuel → refus (chemin in-process non fuel-limable) — [host] ERREUR : hello : limites actives …
+✅ F9 bench sous limite → refusé (mesures faussées) — [host] ERREUR : hello : bench interdit avec HOUETOR_FUEL/HOUETOR_TIMEOUT actifs …
+✅ F10 sans limites → spin bloque jusqu'à la garde-fou hôte (> 55 s) — exit=1 60194ms (avant-correction)
+✅ F11 spinhog retiré, hello/needy/witcalc intacts — gone=true intact={"hello":true,"needy":true,"witcalc":true}
+```
+
+**Résultat :**
+- **Avant/après mesuré** : sans limites, le même plugin malveillant tue le host pendant **60,2 s** (garde-fou `spawnSync`) ; avec fuel, coupé en **313 ms**, avec timeout en **500 ms** ;
+- **la limite ne tue pas le légitime** : sous la même `fuel=1000000`, `add` (5,5) et `fibonacci(45)` (1 134 903 170) passent — coupure sélective, pas un garde-fou global ;
+- **fail-closed partout** : valeur mal formée, chemin non fuel-limable, banc sous limite → refus explicite (F5/F7/F8/F9) plutôt qu'une sécurité feinte ;
+- granularité grossière mais réelle : `fuel=1000` échoue même sur `add` (instanciation du composant incluse), `spin` est coupé dès `10⁶`.
+
+**Limite honnête :** les unités de fuel **ne sont pas comparables** d'une version de wasmtime à l'autre (garde-fou, pas un budget portable) ; le chemin **module core in-process** ne peut pas être fuel-limable → il est *refusé* sous limite (recommandation : composants pour le code non fiable) ; **mémoire** non plafonnée (`-W max-memory-size` existe, non câblé) ; pas de limite sur `install`/`info`.
+
+**Suite :** plafond mémoire (`max-memory-size`), WASI réseau, comparaison Extism, client MCP tiers.

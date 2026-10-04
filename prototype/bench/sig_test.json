@@ -1,12 +1,12 @@
 {
-  "date": "2026-10-04T12:06:55.928Z",
+  "date": "2026-10-04T17:01:58.772Z",
   "machine": "win32 x64 v24.15.0",
   "scheme": "Ed25519, manifest.sig = {alg, sig:base64} signant les octets bruts de manifest.json ; confiance = HOUETOR_TRUST_KEYS (PEM)",
   "checks": [
     {
       "id": "K1 host keygen ed25519",
       "pass": true,
-      "detail": "[host] clé ed25519 générée : C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-sig-ZnUpmX\\keys\\priv.pem (privée, secrète) + C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-sig-ZnUpmX\\keys\\pub.pem (publique → HOUETOR_TRUST_KEYS)"
+      "detail": "[host] clé ed25519 générée : C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-sig-2I8XaV\\keys\\priv.pem (privée, secrète) + C:\\Users\\Kimsh\\AppData\\Local\\Temp\\houetor-sig-2I8XaV\\keys\\pub.pem (publique → HOUETOR_TRUST_KEYS)"
     },
     {
       "id": "D1 distant sans manifest.sig refusé",

@@ -1,17 +1,25 @@
 #!/usr/bin/env node
 // HOUETOR Plugin Host — MVP (Phase 3)
 // Cycle de vie : discover -> validate manifest -> load (deny-by-default) -> call -> bench -> install -> remove -> registry
-// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry|hash|keygen|sign> [...]
+// Usage : node host.mjs <list|info|run|bench|install|install-url|remove|registry|hash|keygen|sign|wit|types> [...]
 // Provenance (Exp 016) : HOUETOR_TRUST_KEYS = chemins de clés publiques PEM (séparées , ou ;) ;
+// Composants WIT (Exp 018) : manifeste "type":"component" → exécution via wasmtime (--invoke WAVE),
+//   types lus dans le binaire via `wasm-tools component wit` ; montage fs = HOUETOR_PREOPENS (JSON {"guest":"hôte"}).
+// Limites d'exécution (Exp 020) : HOUETOR_FUEL (entier > 0) + HOUETOR_TIMEOUT (ex. 200ms) → `-W fuel=` / `-W timeout=`
+//   sur le chemin composant (wasmtime) ; échec ferme si valeur invalide, ou si un module core
+//   (exécution in-process Node, non fuel-limable) est lancé avec ces variables actives.
 
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url)); // prototype/host
 const PLUGINS = path.resolve(ROOT, "..", "plugins");
-const HOST_ALLOWED = []; // deny-by-default : aucune capability accordée par défaut
+// deny-by-default : aucune capability accordée par défaut, SAUF « wasi:filesystem » qui n'accorde
+// AUCUN fichier tant que HOUETOR_PREOPENS ne liste pas les montages (double verrou, Exp 018).
+const HOST_ALLOWED = ["wasi:filesystem"];
 
 const die = (msg, code = 1) => {
   console.error("[host] ERREUR : " + msg);
@@ -68,6 +76,146 @@ function verifySig(manifestDir, ctx) {
   return verifySigData(fs.readFileSync(path.join(manifestDir, "manifest.json")), sig, ctx);
 }
 
+// --- Composants WIT (Exp 018) : outillage, lecture des types dans le BINAIRE, encodage WAVE ---
+function findTool(base, envVar) {
+  if (process.env[envVar]) return process.env[envVar];
+  const ext = process.platform === "win32" ? ".exe" : "";
+  const bin = path.join(process.env.USERPROFILE ?? "", ".local", "bin");
+  try {
+    const direct = path.join(bin, base + ext);
+    if (fs.existsSync(direct)) return direct;
+    for (const d of fs.readdirSync(bin)) {
+      if (!d.startsWith(base + "-")) continue;
+      const p = path.join(bin, d, base + ext);
+      if (fs.existsSync(p)) return p;
+    }
+  } catch { /* dossier absent */ }
+  return base; // PATH en secours
+}
+const WASMTIME = () => findTool("wasmtime", "HOUETOR_WASMTIME");
+const WASMTOOLS = () => findTool("wasm-tools", "HOUETOR_WASMTOOLS");
+
+function runTool(exe, args, ctx) {
+  const r = spawnSync(exe, args, { encoding: "utf8", maxBuffer: 8 * 1024 * 1024, timeout: 60_000 });
+  if (r.error) die(`${ctx} : impossible de lancer ${exe} (${r.error.message})`);
+  return r;
+}
+
+// Prend une accolade ouvrante à `open` dans `s` et renvoie l'index de l'accolade fermante.
+function matchBrace(s, open) {
+  let depth = 0;
+  for (let i = open; i < s.length; i++) {
+    if (s[i] === "{") depth++;
+    else if (s[i] === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+const WIT_TYPES = {
+  f32: "number", f64: "number",
+  u8: "integer", u16: "integer", u32: "integer", u64: "integer",
+  s8: "integer", s16: "integer", s32: "integer", s64: "integer",
+  bool: "boolean", char: "string", string: "string",
+};
+
+// Lit la surface de capabilities + les signatures DANS LE BINAIRE (`wasm-tools component wit`).
+// C'est la preuve de la Phase 1 §2.2 : la surface est inspectable statiquement.
+function componentInfo(wasmPath, ctx) {
+  const r = runTool(WASMTOOLS(), ["component", "wit", wasmPath], ctx ?? wasmPath);
+  if (r.status !== 0) die(`${ctx ?? wasmPath} : wasm-tools component wit a échoué (${(r.stderr || "").trim()})`);
+  const wit = r.stdout;
+  const imports = [...wit.matchAll(/^\s*import\s+([\w:@./-]+);/gm)].map((m) => m[1]);
+  const exports = [...wit.matchAll(/^\s*export\s+([\w:@./-]+);/gm)].map((m) => m[1]);
+  // interface exportée : nom complet « pkg/iface@ver » → corps de l'interface
+  const functions = {};
+  let interfaceName = null;
+  if (exports.length) {
+    const full = exports[0]; // ex. houetor:calc/calc@0.1.0
+    const verIdx = full.lastIndexOf("@");
+    const noVer = verIdx > 0 ? full.slice(0, verIdx) : full;
+    const iface = noVer.slice(noVer.lastIndexOf("/") + 1);
+    const pkg = noVer.slice(0, noVer.lastIndexOf("/"));
+    const pkgBlock = wit.match(new RegExp(`package\\s+${pkg.replace(/[:]/g, "\\:")}@[^\\s{]+\\s*\\{`));
+    if (pkgBlock) {
+      const body = wit.slice(pkgBlock.index + pkgBlock[0].length, matchBrace(wit, pkgBlock.index + pkgBlock[0].length - 1));
+      const ifaceRe = new RegExp(`interface\\s+${iface}\\s*\\{`);
+      const m = body.match(ifaceRe);
+      if (m) {
+        const start = body.indexOf(m[0]) + m[0].length - 1;
+        const ib = body.slice(start + 1, matchBrace(body, start));
+        for (const f of ib.matchAll(/([a-z][\w-]*)\s*:\s*func\s*\(([^)]*)\)\s*(?:->\s*([^;]+))?;/g)) {
+          const params = f[2].trim()
+            ? f[2].split(",").map((p) => {
+                const i = p.indexOf(":");
+                return { name: p.slice(0, i).trim(), type: p.slice(i + 1).trim() };
+              })
+            : [];
+          functions[f[1]] = { params, returns: (f[3] ?? "").trim() };
+        }
+        interfaceName = full;
+      }
+    }
+  }
+  return { wit, imports, exports, functions, interfaceName };
+}
+
+// HOUETOR_PREOPENS = JSON {"<guest>":"<hôte>"} — SEUL moyen d'ouvrir un fichier à un composant.
+function preopenArgs(p) {
+  if (!p.manifest.permissions.includes("wasi:filesystem")) return [];
+  let raw = process.env.HOUETOR_PREOPENS;
+  if (!raw) return []; // pas de montage → deny-by-default au niveau OS
+  let map;
+  try {
+    map = JSON.parse(raw);
+  } catch (e) {
+    die(`${p.manifest.name} : HOUETOR_PREOPENS illisible (${e.message}) — refusé (fail-closed)`);
+  }
+  return Object.entries(map).flatMap(([guest, host]) => {
+    if (!fs.existsSync(host)) die(`${p.manifest.name} : montage inexistant dans HOUETOR_PREOPENS : ${host}`);
+    return ["--dir", `${host}::${guest}`];
+  });
+}
+
+// Limites d'exécution (Exp 020) : fuel (unités) + timeout (temps machine) via wasmtime `-W`.
+// Fail-closed : valeur mal formée = refus AVANT exécution (jamais d'ignorance silencieuse).
+// Retour : null (aucune limite) ou { fuel, timeout, args: [...] } à insérer dans l'invocation wasmtime.
+function executionLimits(ctx) {
+  const fuel = process.env.HOUETOR_FUEL;
+  const timeout = process.env.HOUETOR_TIMEOUT;
+  if (fuel === undefined && timeout === undefined) return null;
+  const lim = { args: [] };
+  if (fuel !== undefined) {
+    if (!/^[1-9][0-9]*$/.test(fuel))
+      die(`${ctx} : HOUETOR_FUEL invalide « ${fuel} » — attendu entier strictement positif (ex. 1000000) — refusé (fail-closed)`);
+    lim.fuel = fuel;
+    lim.args.push("-W", `fuel=${fuel}`);
+  }
+  if (timeout !== undefined) {
+    if (!/^[1-9][0-9]*(us|ms|s)$/.test(timeout))
+      die(`${ctx} : HOUETOR_TIMEOUT invalide « ${timeout} » — attendu durée à unité (ex. 200ms, 2s) — refusé (fail-closed)`);
+    lim.timeout = timeout;
+    lim.args.push("-W", `timeout=${timeout}`);
+  }
+  return lim;
+}
+
+// Encodage WAVE (text encoding des valeurs du Component Model) selon le type WIT déclaré.
+function waveEncode(arg, witType, fnName) {
+  const t = (witType ?? "").trim();
+  if (WIT_TYPES[t] === "string") return JSON.stringify(String(arg));
+  if (WIT_TYPES[t] === "boolean") return arg === true || arg === "true" ? "true" : "false";
+  if (WIT_TYPES[t] === "number" || WIT_TYPES[t] === "integer") {
+    if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(String(arg)))
+      die(`type WIT : ${fnName} attend ${t || "un nombre"}, reçu « ${arg} » — refusé avant exécution`);
+    return String(arg);
+  }
+  // type inconnu : on tente le nombre, sinon la chaîne
+  return /^-?\d+(\.\d+)?$/.test(String(arg)) ? String(arg) : JSON.stringify(String(arg));
+}
+
 function discover() {
   if (!fs.existsSync(PLUGINS)) return [];
   return fs
@@ -96,6 +244,18 @@ function loadManifest(dirName) {
     die(`${dirName} : permissions NON accordées par l'hôte : ${illegal.join(", ")}`);
   const wasmPath = path.join(dir, raw.wasm);
   if (!fs.existsSync(wasmPath)) die(`${dirName} : fichier wasm manquant : ${raw.wasm}`);
+  // composant (Exp 018) : surface de capabilities lue DANS LE BINAIRE, avant toute exécution
+  let cinfo = null;
+  if (raw.type === "component") {
+    cinfo = componentInfo(wasmPath, `${dirName} (wasm-tools)`);
+    const wantsFs = cinfo.imports.some((i) => i.startsWith("wasi:filesystem"));
+    if (wantsFs && !perms.includes("wasi:filesystem"))
+      die(`${dirName} : composant importe wasi:filesystem (visible dans le binaire) mais le manifeste ne déclare pas "wasi:filesystem" — refusé (deny-by-default statique)`);
+    const declared = Object.keys(cinfo.functions);
+    const missing = raw.exports.filter((f) => !declared.includes(f));
+    if (missing.length)
+      die(`${dirName} : exports absents de l'interface WIT du composant : ${missing.join(", ")}`);
+  }
   // provenance (Exp 016) : manifest.signé → vérification obligatoire si présent
   verifySig(dir, dirName);
   // intégrité (Exp 014) : si le manifeste épingle sha256, tout écart = refus
@@ -104,7 +264,7 @@ function loadManifest(dirName) {
     if (actual !== raw.sha256)
       die(`${dirName} : sha256 INCONGRU (manifeste ${String(raw.sha256).slice(0, 12)}…, fichier ${actual.slice(0, 12)}…) — contenu altéré ?`);
   }
-  return { dir, manifest: raw, wasmPath, permissions: perms };
+  return { dir, manifest: raw, wasmPath, permissions: perms, cinfo };
 }
 
 async function loadPlugin(p) {
@@ -196,7 +356,7 @@ switch (cmd) {
       console.log(
         `${p.manifest.name}@${p.manifest.version}  size=${fs.statSync(p.wasmPath).size}B  exports=[${p.manifest.exports.join(",")}]  perms=[${
           p.permissions.join(",") || "aucune"
-        }]  sha256=${p.manifest.sha256 ? "épinglé" : "absent"}`
+        }]  sha256=${p.manifest.sha256 ? "épinglé" : "absent"}  type=${p.manifest.type ?? "module"}`
       );
     break;
   }
@@ -215,6 +375,16 @@ switch (cmd) {
   case "info": {
     const p = loadManifest(rest[0] ?? die("usage : info <plugin>"));
     const bytes = fs.readFileSync(p.wasmPath);
+    if (p.manifest.type === "component") {
+      console.log(JSON.stringify({
+        manifest: p.manifest,
+        disk_size: bytes.length,
+        interface: p.cinfo.interfaceName,
+        imports: p.cinfo.imports,
+        functions: p.cinfo.functions,
+      }, null, 2));
+      break;
+    }
     const mod = await WebAssembly.compile(bytes);
     console.log(JSON.stringify({
       manifest: p.manifest,
@@ -225,11 +395,94 @@ switch (cmd) {
     break;
   }
 
+  case "wit": {
+    // Exp 018 : WIT du composant lu dans le binaire (preuve : types = contrat, pas du JSON déclaratif)
+    const p = loadManifest(rest[0] ?? die("usage : wit <plugin>"));
+    if (p.manifest.type !== "component") die(`${p.manifest.name} : module core (pas un composant) — pas de WIT`);
+    process.stdout.write(p.cinfo.wit);
+    break;
+  }
+
+  case "types": {
+    // Exp 018/019 : signatures exportées en JSON (alimente les inputSchema MCP)
+    const p = loadManifest(rest[0] ?? die("usage : types <plugin>"));
+    if (p.manifest.type !== "component") die(`${p.manifest.name} : module core — signatures non typées (ABI nombre[] seulement)`);
+    console.log(JSON.stringify({
+      plugin: `${p.manifest.name}@${p.manifest.version}`,
+      interface: p.cinfo.interfaceName,
+      imports: p.cinfo.imports,
+      functions: p.cinfo.functions,
+    }, null, 2));
+    break;
+  }
+
   case "run": {
     const [name, fn, ...args] = rest;
     if (!name || !fn) die("usage : run <plugin> <fonction> [args...]");
+    const lim = executionLimits(name); // Exp 020 : validées AVANT toute exécution
     const p = loadManifest(name);
     if (!p.manifest.exports.includes(fn)) die(`${name} : fonction "${fn}" non déclarée dans le manifeste`);
+    // --- Composant (Exp 018) : typage fort, encodage WAVE, exécution wasmtime ---
+    if (p.manifest.type === "component") {
+      const fnInfo = p.cinfo.functions[fn];
+      if (!fnInfo) die(`${name} : fonction "${fn}" absente de l'interface WIT du composant`);
+      if (args.length !== fnInfo.params.length)
+        die(`${name} : ${fn} attend ${fnInfo.params.length} paramètre(s) [${fnInfo.params
+          .map((x) => `${x.name}: ${x.type}`)
+          .join(", ")}], reçu ${args.length}`);
+      const expr = `${fn}(${args.map((a, i) => waveEncode(a, fnInfo.params[i].type, fn)).join(", ")})`;
+      const grants = preopenArgs(p);
+      const tc0 = now();
+      const r = spawnSync(WASMTIME(), ["run", ...grants, ...(lim?.args ?? []), "--invoke", expr, p.wasmPath], {
+        encoding: "utf8",
+        timeout: 60_000,
+      });
+      const wall = now() - tc0;
+      if (r.error) {
+        if (r.error.code === "ETIMEDOUT" || /timed out/i.test(r.error.message))
+          die(`${name} : exécution > 60 s — coupée par la garde-fou hôte (AUCUNE limite fuel/timeout configurée — voir HOUETOR_FUEL/HOUETOR_TIMEOUT, Exp 020)`);
+        die(`${name} : wasmtime inaccessible (${r.error.message})`);
+      }
+      if (r.status !== 0) {
+        const err = (r.stderr ?? "").trim();
+        if (/while interpreting parameters in invoke/.test(err))
+          die(`${name} : argument(s) refusés par le Component Model (typage WAVE) — ${err.split(/\r?\n/).pop()}`);
+        if (lim?.fuel && /all fuel consumed/.test(err))
+          die(`${name} : fuel épuisé (HOUETOR_FUEL=${lim.fuel}) — exécution coupée (anti-DoS, Exp 020)`);
+        if (lim?.timeout && /wasm trap: interrupt/.test(err))
+          die(`${name} : timeout atteint (HOUETOR_TIMEOUT=${lim.timeout}) — exécution coupée (anti-DoS, Exp 020)`);
+        die(`${name} : exécution échouée — ${err}`);
+      }
+      const out = (r.stdout ?? "").trim();
+      let result = out;
+      try {
+        result = JSON.parse(out);
+      } catch { /* WAVE non JSON (result/variant) → texte brut */ }
+      console.log(JSON.stringify({
+        plugin: `${p.manifest.name}@${p.manifest.version}`,
+        type: "component",
+        interface: p.cinfo.interfaceName,
+        call: fn,
+        args,
+        result,
+        timings_ms: { wall_wasmtime: +wall.toFixed(3) },
+        limits: lim
+          ? { ...(lim.fuel ? { fuel: Number(lim.fuel) } : {}), ...(lim.timeout ? { timeout: lim.timeout } : {}) }
+          : "aucun (illimité)",
+        grants: grants.length ? grants.join(" ") : "aucun (deny-by-default)",
+        wasm_bytes: fs.statSync(p.wasmPath).size,
+        engine: "wasmtime (Component Model, WAVE)",
+      }, null, 2));
+      break;
+    }
+    // Module core (Exp 020) : exécution in-process Node — AUCUN fuel/timeout possible.
+    // Plutôt que d'ignorer silencieusement la demande, on refuse (fail-closed).
+    if (lim)
+      die(
+        `${name} : limites actives (${[lim.fuel ? `HOUETOR_FUEL=${lim.fuel}` : null, lim.timeout ? `HOUETOR_TIMEOUT=${lim.timeout}` : null]
+          .filter(Boolean).join(", ")}) mais ce plugin est un module core exécuté in-process (Node) : ` +
+          `fuel/timeout impossible sur ce chemin — utiliser un composant ("type":"component", wasmtime) — refusé (fail-closed)`
+      );
     const t0 = now();
     let loaded;
     try {
@@ -262,6 +515,11 @@ switch (cmd) {
     const fnArgs = argsCsv === "-" ? [] : String(argsCsv).split(",").map(Number);
     const p = loadManifest(name);
     if (!p.manifest.exports.includes(fn)) die(`${name} : fonction "${fn}" non déclarée dans le manifeste`);
+    if (p.manifest.type === "component")
+      die(`${name} : bench non supporté pour un composant (1 spawn wasmtime par appel) — mesures dans prototype/bench/component_test.mjs`);
+    // Exp 020 : un banc sous fuel/timeout mesure autre chose → refus plutôt qu'une mesure faussée
+    if (executionLimits(name) !== null)
+      die(`${name} : bench interdit avec HOUETOR_FUEL/HOUETOR_TIMEOUT actifs (mesures faussées) — déconnecter les limites`);
     // démarrage à froid (aucun cache)
     const t0 = now();
     let loaded;
@@ -463,5 +721,5 @@ switch (cmd) {
   }
 
   default:
-    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry|hash|keygen|sign> [args...]");
+    die("usage : host.mjs <list|info|run|bench|install|install-url|remove|registry|hash|keygen|sign|wit|types> [args...]");
 }

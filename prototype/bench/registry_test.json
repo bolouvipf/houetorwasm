@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-04T12:07:03.055Z",
+  "date": "2026-10-04T17:01:55.869Z",
   "machine": "win32 x64 v24.15.0",
   "registry_layout": "<reg>/<nom>/<version>/{manifest.json,wasm}",
   "base_url": "http://127.0.0.1:<port>",
   "timings_ms": {
-    "install_v1": 562.3,
-    "install_v2": 567.9
+    "install_v1": 328.3,
+    "install_v2": 306.4
   },
   "checks": [
     {
@@ -36,7 +36,7 @@
     {
       "id": "R5 manifeste corrompu refusé (rien installé)",
       "pass": true,
-      "detail": "[host] ERREUR : http://127.0.0.1:54349/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
+      "detail": "[host] ERREUR : http://127.0.0.1:62608/regprobe-corrupt/9.9.9/ (manifeste distant) : champ obligatoire manquant dans le manifeste : \"exports\""
     },
     {
       "id": "R5 plugin courant intact",
