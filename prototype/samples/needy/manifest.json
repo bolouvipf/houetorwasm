@@ -1,0 +1,9 @@
+{
+  "name": "needy",
+  "version": "1.0.0",
+  "wasm": "needy.wasm",
+  "description": "Plugin exigeant une capability hôte (env.host_log) — sert à tester le deny-by-default",
+  "exports": ["do_log", "plugin_version"],
+  "permissions": [],
+  "entry_abi": "core-wasm-void"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "hello",
+  "version": "1.0.1",
+  "wasm": "hello.wasm",
+  "description": "Plugin de demonstration du HOUETOR Plugin Host",
+  "exports": ["add", "fibonacci", "plugin_version"],
+  "permissions": [],
+  "entry_abi": "core-wasm-f64-f64"
+}

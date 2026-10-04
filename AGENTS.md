@@ -21,14 +21,14 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 4. `docs-learning/LEARNING_STATE.md` — **état actuel + point de reprise**
 5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 001**)
 
-## 3. État en bref (contrôle 2026-10-04)
+## 3. État en bref (contrôle 2026-10-04, session 1)
 
-- **Phase 1 (état de l'art) : FAITE** → `phase1_etat_de_l_art.md` (conclusion : propriétés mécaniques ✅ / propriétés écosystémiques ❌).
-- **Phase 2 (cartographie) : EN COURS** → `phase2_cartographie.md` (squelette prêt, à remplir).
-- **Phase 3 (prototype HOUETOR Plugin Host) : pas commencée.**
+- **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` (branche `main`).
+- **Phase 1 (état de l'art) : FAITE** → `phase1_etat_de_l_art.md` (conclusion : propriétés mécaniques ✅ / écosystémiques ❌).
+- **Phase 2 (cartographie) : EN COURS** → `phase2_cartographie.md` (domaines A-B-E-F amorcés, C-D-G-H à remplir).
+- **Phase 3 (HOUETOR Plugin Host) : MVP FAI** → `prototype/host/host.mjs` + `plugins/hello@1.0.1` + `plugins/needy@1.0.0` (preuves : Exp 003 — 8/8 étapes du §4).
 - **Phase 4 (pont WASM × MCP) : pas commencée.**
-- **Outillage local : QUASI ABSENT** (contrôle 2026-10-04) — Node.js ✅ ; `wasmtime`, `cargo`, `rustc`, `wat2wasm`, `wasm-tools`, `docker` **ABSENTS** ; **aucun GPU local** (normal : inutile ici).
-- **Pas encore de repo git** dans ce dossier.
+- **Outillage local (2026-10-04)** : wasmtime **49.0.2** ✅ · Rust **1.99.0** (+ `wasm32-unknown-unknown`, `wasm32-wasip2`) ✅ · Node **v24.15.0** ✅ · Docker ❌ · **aucun GPU (inutile ici)**.
 
 ## 4. Réponse rapide à la question « GPU en ligne ? »
 
@@ -46,10 +46,23 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 ## 6. Commandes de base
 
 ```powershell
-# État de l'outillage
-wasmtime --version ; cargo --version ; rustc --version
+# État de l'outillage (redémarrer le shell après installation si besoin)
+wasmtime --version ; cargo --version ; rustc --version ; node --version
 
-# (À compléter dès l'installation : build plugin, run plugin, bench)
+# HOUETOR Plugin Host (MVP Phase 3)
+node "prototype\host\host.mjs" list
+node "prototype\host\host.mjs" info hello
+node "prototype\host\host.mjs" run hello add 2 3.5
+node "prototype\host\host.mjs" bench hello 10000
+node "prototype\host\host.mjs" install "prototype\samples\needy"
+node "prototype\host\host.mjs" remove needy
+
+# Rebuild d'un plugin (dossier du crate)
+cargo build --release --target wasm32-unknown-unknown
+Copy-Item "target\wasm32-unknown-unknown\release\hello.wasm" ".\hello.wasm" -Force
+
+# Git (jamais de secrets, add ciblé)
+git add -- <fichiers>; git commit -m "..."; git push
 ```
 
 ## 7. Obligation de fin de session
