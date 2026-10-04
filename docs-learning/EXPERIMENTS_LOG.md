@@ -461,3 +461,38 @@ Détail I4 : le test **retourne 1 octet** du wasm installé, `run` est refusé, 
 **Limite honnête :** sha256 = intégrité **optimiste** (l'attaquant qui contrôle le registre contrôle aussi le manifeste) → la vraie provenance nécessite une **signature asymétrique** (suite).
 
 **Suite :** signature asymétrique des manifestes, WASI réseau, WIT, client MCP externe.
+
+---
+
+## Exp 015 — Filtrage d'outils MCP par policy (3ᵉ barrière côté bridge) (2026-10-04)
+
+**Contexte :** le bridge exposait **tous** les exports déclarés (`phase4_mcp_bridge.md` §4 : « le filtrage par policy n'existe pas ») — un agent ne devrait voir/appeler que les outils autorisés, indépendamment du host.
+
+**Action :**
+- `bridge.mjs` : variable **`HOUETOR_MCP_POLICY`** = chemin d'un JSON `{"allow":[...], "deny":[...]}` ; `tools/list` filtré ; `tools/call` sur outil existant mais non allowé → refus **avant d'atteindre le host** (message distinct de `outil inconnu`) ; **deny prime sur allow** ; fichier illisible/invalide → **fail-closed** (liste vide, tout refusé) ; sans variable → mode open rétrocompatible ;
+- `policy_test.mjs` : 3 clients MCP (policy filtrante / policy cassée / sans policy) → `policy_test.json`.
+
+**Preuves brutes** (`policy_test.json`, `all_checks_pass: true`, **9/9**) :
+
+```text
+✅ P0 initialize — houetor-mcp-bridge
+✅ P1 tools/list filtré = [hello_add] — ["hello_add"]
+✅ P2 hello_add allowé → 5.5 — result=5.5
+✅ P3 deny prime sur allow — tool « hello_fibonacci » refusé par policy (deny, …)
+✅ P4 hors allow → refus policy (host jamais atteint) — tool « needy_do_log » refusé par policy (hors allow, …)
+✅ P5 inconnu ≠ policy — outil inconnu : does_not_exist
+✅ P6a policy illisible → liste vide — []
+✅ P6b policy illisible → tout refusé (fail-closed) — policy fail-closed (broken.json illisible : Expected p…)
+✅ P7 sans policy → découverte complète — 5 outils
+```
+
+Régression : `test_bridge.mjs` → **8/8 inchangé** (mode open par défaut).
+
+**Résultat :**
+- **Défense en profondeur à 3 barrières** : bridge (n'expose que les exports déclarés) → **policy bridge** (ne montre/appelle que les allowés) → host (deny-by-default + sha256 + permissions WASI) ;
+- le fail-closed répond à la règle de sécurité de base : **une erreur de configuration ne doit pas élargir les droits** ;
+- couvre le « reste » documenté Phase 4 (ROADMAP/phase4 §7).
+
+**Limite honnête :** policy statique (fichier), noms exacts (pas de motifs `*`), pas de scope par agent/session ; mode open = démo (à inverser en production).
+
+**Suite :** client MCP tiers réel (inspector/Claude Desktop), WIT (types riches), signature asymétrique, WASI réseau.

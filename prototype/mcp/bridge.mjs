@@ -5,8 +5,10 @@
 // automatiquement en outil MCP ? »).
 // Transport MCP : stdio, JSON-RPC 2.0, messages délimités par newlines (aucune dépendance).
 // Usage : node bridge.mjs   (par un client MCP via stdin/stdout)
+//   HOUETOR_MCP_POLICY=<fichier.json {"allow":[],"deny":[]}>  → filtrage d'outils (Exp 015)
 
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +16,40 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)); // prototype/mcp
 const HOST = path.resolve(HERE, "..", "host", "host.mjs");
 const SERVER_INFO = { name: "houetor-mcp-bridge", version: "0.1.0" };
 const PROTOCOL_VERSION = "2025-06-18";
+
+// --- Policy d'outils (Exp 015) : HOUETOR_MCP_POLICY = chemin d'un JSON {allow:[...], deny:[...]}
+// Sans variable → mode "open" (rétro-compatible). Fichier illisible/ invalide → "fail-closed"
+// (rien exposé, tout refusé) : un défaut de configuration ne doit jamais ouvrir l'accès.
+const POLICY_PATH = process.env.HOUETOR_MCP_POLICY || null;
+let policyCache = null;
+function loadPolicy() {
+  if (policyCache) return policyCache;
+  if (!POLICY_PATH) return (policyCache = { mode: "open" });
+  try {
+    const raw = JSON.parse(fs.readFileSync(POLICY_PATH, "utf8"));
+    return (policyCache = {
+      mode: "filter",
+      allow: new Set(Array.isArray(raw.allow) ? raw.allow : []),
+      deny: new Set(Array.isArray(raw.deny) ? raw.deny : []),
+      src: POLICY_PATH,
+    });
+  } catch (e) {
+    return (policyCache = { mode: "fail-closed", reason: e.message, src: POLICY_PATH });
+  }
+}
+function policyAllows(toolName) {
+  const p = loadPolicy();
+  if (p.mode === "open") return true;
+  if (p.mode === "fail-closed") return false;
+  if (p.deny.has(toolName)) return false; // deny prime sur allow
+  return p.allow.has(toolName);
+}
+function policyStatus(toolName) {
+  const p = loadPolicy();
+  if (p.mode === "fail-closed") return `policy fail-closed (${p.src} illisible : ${p.reason})`;
+  if (p.deny.has(toolName)) return `tool « ${toolName} » refusé par policy (deny, ${p.src})`;
+  return `tool « ${toolName} » refusé par policy (hors allow, ${p.src})`;
+}
 
 const hostRun = (args) =>
   spawnSync(process.execPath, [HOST, ...args], { encoding: "utf8", timeout: 30_000 });
@@ -38,12 +74,15 @@ function discoverPlugins() {
 }
 
 // --- Génération automatique outils MCP depuis les manifestes ---
-function buildTools() {
+// applyPolicy=false : vue complète (pour distinguer « inconnu » de « refusé par policy » à l'appel)
+function buildTools({ applyPolicy = true } = {}) {
   const tools = [];
   for (const p of discoverPlugins()) {
     for (const fn of p.exports) {
+      const name = `${p.name}_${fn}`;
+      if (applyPolicy && !policyAllows(name)) continue;
       tools.push({
-        name: `${p.name}_${fn}`,
+        name,
         description:
           `Plugin WASM ${p.name}@${p.version} — fonction exportée « ${fn} » ` +
           `(découverte automatique depuis manifest.json ; sandbox deny-by-default, ` +
@@ -91,8 +130,12 @@ function handle(req) {
           tools: buildTools().map(({ _plugin, _fn, ...t }) => t), // champs internes masqués
         };
       case "tools/call": {
-        const tool = buildTools().find((t) => t.name === params?.name);
+        // vue complète : un outil existe (manifeste) mais peut être filtré par policy
+        const all = buildTools({ applyPolicy: false });
+        const tool = all.find((t) => t.name === params?.name);
         if (!tool) return { content: [{ type: "text", text: `outil inconnu : ${params?.name}` }], isError: true };
+        if (!policyAllows(tool.name))
+          return { content: [{ type: "text", text: policyStatus(tool.name) }], isError: true };
         const args = Array.isArray(params?.arguments?.args) ? params.arguments.args.map(Number) : [];
         const r = hostRun(["run", tool._plugin, tool._fn, ...args.map(String)]);
         const ok = r.status === 0;

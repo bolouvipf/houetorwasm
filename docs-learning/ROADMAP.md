@@ -18,8 +18,8 @@
 
 ## État Phase 4 (détail)
 
-**Fait :** bridge MCP stdio sans dépendance, découverte auto des plugins, `tools/list` **généré depuis les manifestes**, `tools/call` routé vers le host, refus des outils inconnus, **défense en profondeur** prouvée (outil exposé mais appel refusé par sandbox).
-**Reste :** vrai client MCP externe (inspector/Claude Desktop), types riches (WIT), filtrage d'outils par policy.
+**Fait :** bridge MCP stdio sans dépendance, découverte auto des plugins, `tools/list` **généré depuis les manifestes**, `tools/call` routé vers le host, refus des outils inconnus, **défense en profondeur** prouvée (outil exposé mais appel refusé par sandbox), **filtrage par policy** (Exp 015 : allow/deny, deny prioritaire, fail-closed, 9/9).
+**Reste :** vrai client MCP externe (inspector/Claude Desktop), types riches (WIT).
 
 ## Critères de mesure (étude §7) — couverture finale
 

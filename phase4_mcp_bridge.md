@@ -57,7 +57,7 @@ Transcript complet (requêtes/réponses JSON-RPC brutes) : `prototype/mcp/transc
 |---|---|
 | Découverte des plugins + de leurs exports (manifeste validé par le host) | **Typage faible** : seuls `number[]` passent (Canonical ABI / WIT donneraient types, chaînes, structs) |
 | Génération du nom d'outil, de la description, du `inputSchema` | **Sémantique** : l'agent voit `hello_add` mais ignore sauf description que c'est l'addition (pas de doc WIT) |
-| Publication/rétraction vivante (install/remove → tools/list change) | **Granularité** : tout export déclaré est exposé — le filtrage par policy (quels outils voir selon l'agent) n'existe pas |
+| Publication/rétraction vivante (install/remove → tools/list change) | ~~Granularité : filtrage par policy n'existe pas~~ → **fait (Exp 015)** ; reste : policy dynamique/contextuelle (par agent, par session) |
 | Sécurité préservée (le host refuse ce qu'il doit refuser **même si l'outil est exposé**) | **Effets de bord** : fonctions avec état/ressources (WIT `resource`) non gérées |
 
 **Réponse courte** : un plugin WASM avec manifeste **devient un jeu d'outils MCP en une ligne de code** (zéro intégration côté agent) ; ce qui manque pour aller au bout n'est pas MCP mais **WASI/Component Model** (types riches) — exactement la conclusion de la Phase 1 sur le contrat sémantique.
@@ -71,6 +71,22 @@ Transcript complet (requêtes/réponses JSON-RPC brutes) : `prototype/mcp/transc
 
 Un agent IA (ou un attaquant qui pilote l'agent) ne peut donc pas « forcer » un plugin plus loin que ce que son manifeste + la policy hôte autorisent. C'est la propriété clé voulue par l'étude §4/§7, démontrée ici **à travers MCP**.
 
+## 5bis. Filtrage d'outils par policy (Exp 015)
+
+**3ᵉ barrière** : le bridge peut restreindre quels outils un agent voit/appelle, via `HOUETOR_MCP_POLICY=<json {"allow":[...], "deny":[...]}>` (`node prototype\mcp\policy_test.mjs` → `policy_test.json`, **9/9**) :
+
+| Verdict | Preuve |
+|---|---|
+| `tools/list` ne montre que les outils allowés | `["hello_add"]` sur 5 existants |
+| allowé → appel OK | `hello_add(2,3.5)=5.5` |
+| **deny prime sur allow** | `hello_fibonacci` allowé+denyé → refusé (`policy (deny, …)`) |
+| hors allow → refus **avant le host** | message policy, aucune trace `deny-by-default`/`host_log` |
+| inconnu ≠ policy | messages distincts (`outil inconnu` vs `refusé par policy`) |
+| **fichier policy illisible → fail-closed** | liste vide + tout refusé (un souci de config n'ouvre jamais l'accès) |
+| sans variable → rétrocompat | découverte complète (5 outils), test 8/8 inchangé |
+
+Sémantique : allowlist par nom exact d'outil (`<plugin>_<fonction>`) ; deny list **prioritaire** ; sans variable `HOUETOR_MCP_POLICY` → mode « open » (découverte complète, = mode démo, rétrocompat 8/8) ; une policy **demandée mais illisible → fail-closed** (tout refusé).
+
 ## 6. Contraste avec l'état de l'art (Phase 2)
 
 - **Extism** expose déjà des plugins en serveurs HTTP ; **Fastly** fait du MCP côté edge — mais nous n'avons trouvé **aucun projet public générant automatiquement `tools/list` MCP depuis des manifestes de plugins WASM** (recherche Phase 2, 2026-10-04). Notre pont est donc une contribution locale originale, même sommaire.
@@ -79,5 +95,5 @@ Un agent IA (ou un attaquant qui pilote l'agent) ne peut donc pas « forcer » u
 ## 7. Suite (non réalisée)
 
 - Chaînage complet avec un **vrai client MCP** (Claude Desktop / npx `@modelcontextprotocol/inspector`) — le bridge parle le protocole standard, testable tel quel.
-- Types riches via **WIT/Component Model** (strings, records) et filtrage d'outils par policy.
+- Types riches via **WIT/Component Model** (strings, records). ~~Filtrage d'outils par policy~~ → **fait (Exp 015, §5bis)**.
 - Ponter vers **wasmtime** (hôte Rust) pour éliminer Node du chemin (mesures RSS).

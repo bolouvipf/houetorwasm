@@ -17,6 +17,7 @@
    - **Intégrité ✅** (Exp 014) : épinglage **sha256** du wasm au manifeste — obligatoire pour `install-url`, vérifié à chaque chargement + avant copie locale ; commande `hash` ; **15/15 checks** (distant sans sha refusé, fausse empreinte refusée, altération post-install détectée à l'exécution, plugins sans sha compat) → `registry_test.json` ; `node:crypto` = 0 dépendance. **Limite** : sha256 = intégrité optimiste (registre compromis = manifeste compromis) → signature asymétrique = suite.
 4. **Phase 4 — Pont MCP** → `prototype/mcp/bridge.mjs` + `phase4_mcp_bridge.md`.
    - **8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** ; défense en profondeur (outil exposé, appel refusé par sandbox).
+   - **9/9 policy** (Exp 015) : filtrage allow/deny via `HOUETOR_MCP_POLICY` (deny prime, hors-allow refusé **avant** le host, policy cassée = **fail-closed**, sans variable = rétrocompat) → `policy_test.json` — **3ᵉ barrière** (bridge → policy → host).
 5. **Conclusion §11 écrite** → `conclusion.md` : réponses aux 8 questions + verdict hypothèse §9 (**confirmée côté technique, nuancée côté écosystème**).
 6. **Structure lab** : `AGENTS.md`, `docs-learning/{ROADMAP,LEARNING_STATE,EXPERIMENTS_LOG}.md` (Exp 001→006).
 7. **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` — tout poussé (dernier commit de session : docs + conclusion).
@@ -25,7 +26,7 @@
 ## À faire ⏳ (suite recommandée, par ordre)
 
 1. **WASI réseau** : sockets (WASI 0.3) ; **WIT** (chaînes/structs) pour enrichir le bridge MCP (types d'outils riches).
-2. Client MCP externe « inspector » (filtre d'outils par policy) — le test actuel *est* déjà un client JSON-RPC externe (spawn stdio) ; reste l'interconnexion avec un vrai client tiers (Claude Desktop/inspector).
+2. Client MCP tiers réel « inspector »/Claude Desktop (le filtrage policy est fait — Exp 015 ; le test actuel *est* déjà un client JSON-RPC externe spawn stdio) ; reste l'interconnexion avec un vrai client tiers.
 3. Workload non compute-bound (strings/mémoire) + charge de fichiers WASI réelle ; portabilité macOS/navigateur.
 4. Instruments de dépendances (WIT/composants). ~~Chargement distant~~ : **FAIT (Exp 013-014)**.
 5. **Signature asymétrique/provenance des plugins** (au-delà du sha256, Exp 014), hôte wasmtime en Rust ; ~~chargement distant~~ = FAIT (Exp 013-014).
@@ -34,8 +35,8 @@
 
 > Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012), **distribution ✅ registre/HTTP** (Exp 013). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
 > Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
-> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 014**) → `conclusion.md`.
-> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) (tout vert).
+> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 015**) → `conclusion.md`.
+> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `node prototype\mcp\policy_test.mjs` (9/9) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) (tout vert).
 
 ## Décisions de session
 
