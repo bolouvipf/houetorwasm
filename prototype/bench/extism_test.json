@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-04T17:27:55.603Z",
+  "machine": "win32 x64 v24.15.0",
+  "comparaison": "Extism CLI 1.6.3 (runtime wazero) vs HOUETOR Plugin Host (Node in-process + wasmtime 49.0.2)",
+  "contrats": {
+    "extism": [
+      "manifeste JSON {wasm, allowed_hosts, allowed_paths, timeout_ms, memory.max_pages, config}",
+      "ABI PDK Extism (extism:host/env)",
+      "WASI optionnel (--wasi + allowed_paths)"
+    ],
+    "houetor": [
+      "manifeste JSON {name, version, type, exports, permissions, sha256, manifest.sig}",
+      "ABI module core nombre[] ou composant WIT/WAVE",
+      "WASI + HOUETOR_PREOPENS + HOUETOR_FUEL/HOUETOR_TIMEOUT"
+    ]
+  },
+  "timings_ms": {
+    "version_ms": 256.9,
+    "add_ms": 691.9,
+    "spin_timeout_ms": 1063.7
+  },
+  "checks": [
+    {
+      "id": "X1 extism --version",
+      "pass": true,
+      "detail": "extism version 1.6.3"
+    },
+    {
+      "id": "X2 module HOUETOR (ABI nombre[]) → refus ABI Extism",
+      "pass": true,
+      "detail": "Error: expected 2 params, but passed 0"
+    },
+    {
+      "id": "X3 composant WIT → refus (pas de Component Model dans ce CLI)",
+      "pass": true,
+      "detail": "Error: invalid version header"
+    },
+    {
+      "id": "X4 extplug (PDK Extism) add \"2 3.5\" → \"5.5\" (même valeur que HOUETOR)",
+      "pass": true,
+      "detail": "out=\"5.5\" 692ms"
+    },
+    {
+      "id": "X5 needy (env.host_log) → « module[env] not instantiated » (deny Extism)",
+      "pass": true,
+      "detail": "Error: module[env] not instantiated"
+    },
+    {
+      "id": "X6 manifeste Extism timeout_ms=500 → spin coupé « Error: timeout » en < 3 s",
+      "pass": true,
+      "detail": "exit=1 1064ms"
+    },
+    {
+      "id": "X7 manifeste allowed_hosts=[] → HTTP refusé",
+      "pass": true,
+      "detail": "Error: HTTP request to 'http://127.0.0.1:61555/probe' is not allowed (recovered by wazero)"
+    },
+    {
+      "id": "X8 allowed_hosts=127.0.0.1 → corps servi local reçu",
+      "pass": true,
+      "detail": "out=\"EXTISM-LOCAL-OK\""
+    },
+    {
+      "id": "X9 hog --memory-max 16 → refus au chargement (min déclaré 17 pages)",
+      "pass": true,
+      "detail": "Error: section memory: min 17 pages (1 Mi) over limit of 16 pages (1 Mi)"
+    },
+    {
+      "id": "X10 hog --memory-max 32 (2 MiB) → 64 MiB alloués quand même (nuance : limite non bloquante)",
+      "pass": true,
+      "detail": "exit=0 out=\"67108864 octets touches\""
+    },
+    {
+      "id": "X11 serveur fermé + plugins intacts",
+      "pass": true,
+      "detail": "{\"hello\":true,\"needy\":true,\"witcalc\":true} staging=false"
+    }
+  ],
+  "all_checks_pass": true
+}

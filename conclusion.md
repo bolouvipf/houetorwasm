@@ -1,6 +1,6 @@
 # Conclusion — Réponses aux questions finales (étude §11)
 
-> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→020).
+> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→021).
 > Rappel de la règle du lab : **aucune réponse sans preuve brute datée** ; les chiffres renvoient aux fichiers de mesures (`phase3_measures.md` + JSON bruts = source de vérité).
 
 ## Verdict sur l'hypothèse (§9)
@@ -31,6 +31,8 @@
 ## 3. Quels systèmes utilisent déjà WASM comme infrastructure de plugins ?
 
 **Phase 2 (8 domaines, sources datées)** : proxy-wasm (Envoy/Kong/APISIX, ABI figée depuis 2021), **DuckDB (extensions WASM signées + autoload)**, **ClickHouse (UDF sandboxed in-process)**, Shopify Functions, Extism, wasmCloud (WIT), Spin, WAMR+Zephyr (OTA sans reflash), VS Code (WASI/Component Model pour libs). Inversement : **VS Code et les navigateurs n'utilisent PAS WASM comme runtime d'extension** (JS + signature + confiance).
+
+**Vérification au laboratoire (Exp 021)** : le cadre de référence **Extism** (CLI 1.6.3 officiel + PDK Rust) a été exécuté contre nos binaires — il **refuse** notre module (`expected 2 params`) et notre composant WIT (`invalid version header`), nous **refusons** ses imports inconnus et son HTTP par défaut fermé, et pourtant son plugin renvoie **5.5**, la même valeur que nos 7 combinaisons — **la thèse C est confirmée sur un tiers indépendant** : le calcul traverse les cadres, le contrat non (`extism_test.json`, 11/11).
 
 ## 4. Quels problèmes empêchent encore une véritable universalité ?
 

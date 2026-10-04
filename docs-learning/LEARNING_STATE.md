@@ -18,29 +18,30 @@
    - **Provenance ✅** (Exp 016) : signature **Ed25519** des manifestes (`keygen`/`sign` → `manifest.sig`), confiance = `HOUETOR_TRUST_KEYS` (PEM), `install-url` exige **sha256 + sig** sur octets bruts, sig présent sans clé = **refus explicite** ; **12/12 checks** (`sig_test.json`) + régressions 15/15/8/8 verts. **Limite** : distribution des clés = humaine (pas de PKI) ; bruit cosmétique Node/Windows `UV_HANDLE_CLOSING` (stderr, sans impact).
    - **Composants WIT ✅** (Exp 018) : plugin `witcalc` (**composant** `houetor:calc/calc@0.1.0`, 94 668 o, `wasm32-wasip2`) — WIT et surface de capabilities **lus dans le binaire** (`host wit` / `host types`), exécution **WAVE** (`add(2, 3.5)` → 5.5), refus de type/arité **avant** exécution, **deny-by-default statique** (composant fs sans permission = ne se charge pas) + **double verrou fs** (`HOUETOR_PREOPENS`) ; **20/20 checks** → `component_test.json`.
    - **Isolation temporelle ✅** (Exp 020) : `HOUETOR_FUEL` / `HOUETOR_TIMEOUT` → `-W fuel=` / `-W timeout=` (wasmtime) — plugin malveillant `spinhog` (boucle infinie) : **60,2 s de blocage sans limites → coupé en 313 ms (fuel) / 500 ms (timeout)**, appels légitimes intacts sous la même limite, valeurs invalides = refus fail-closed ; **12/12 checks** → `fuel_test.json`. **Limite** : chemin module core in-process non fuel-limable (refusé, pas ignoré) ; mémoire non plafonnée.
+   - **Comparaison Extism ✅** (Exp 021) : CLI officiel **1.6.3** (sha256 zip vérifié, runtime wazero) + plugin maison `extplug` (PDK Rust `extism-pdk 1.4.1`) — **11/11 checks** → `extism_test.json` : notre module refusé par Extism (`expected 2 params`), notre composant WIT refusé (`invalid version header`), plugin PDK → **5.5 = même valeur que HOUETOR**, imports inconnus refusés des deux côtés, `allowed_hosts=[]` → HTTP refusé / accordé après, `timeout_ms=500` coupe `spin` en 1 064 ms. **Thèse C confirmée sur un tiers** ; nuance : `memory.max_pages` refuse le chargement mais n'a pas bloqué une croissance 64 MiB (Exp 021 X10), alors que HOUETOR n'a pas encore de plafond mémoire.
 4. **Phase 4 — Pont MCP** → `prototype/mcp/bridge.mjs` + `phase4_mcp_bridge.md`.
    - **8/8** (Exp 005) : `tools/list` **généré automatiquement depuis les manifestes** ; défense en profondeur (outil exposé, appel refusé par sandbox).
    - **9/9 policy** (Exp 015) : filtrage allow/deny via `HOUETOR_MCP_POLICY` (deny prime, hors-allow refusé **avant** le host, policy cassée = **fail-closed**, sans variable = rétrocompat) → `policy_test.json` — **3ᵉ barrière** (bridge → policy → host).
    - **Outils typés ✅** (Exp 019) : pour un composant, `tools/list` expose un `inputSchema` à **propriétés nommées typées** `{a: number, b: number}` (required, types WIT dans la description) ; `tools/call` mappe nommé → positionnel et refuse le paramètre manquant — **fin du `number[]`** ; modules core = schéma legacy inchangé, régressions **8/8 + 9/9**.
 5. **Conclusion §11 écrite** → `conclusion.md` : réponses aux 8 questions + verdict hypothèse §9 (**confirmée côté technique, nuancée côté écosystème**).
-6. **Structure lab** : `AGENTS.md`, `docs-learning/{ROADMAP,LEARNING_STATE,EXPERIMENTS_LOG}.md` (Exp 001→020).
+6. **Structure lab** : `AGENTS.md`, `docs-learning/{ROADMAP,LEARNING_STATE,EXPERIMENTS_LOG}.md` (Exp 001→021).
 7. **Repo GitHub** : `https://github.com/bolouvipf/houetorwasm.git` — tout poussé (dernier commit de session : docs + conclusion).
-8. **Toolchain** : wasmtime 49.0.2 · **wazero 1.12** (Exp 007) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · Rust 1.99.0 (+ wasm32, cible `wasm32-wasip2`) · Node 24.15.0 · Python 3.14 · **clang/LLVM-MinGW 22.1.8** · GPU inutile (tranché) · Wasmer 7.5 = non fonctionnel ici (voir Exp 007).
+8. **Toolchain** : wasmtime 49.0.2 · **wazero 1.12** (Exp 007) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · **Extism CLI 1.6.3** (Exp 021, `~\.local\bin\extism\extism.exe`) · Rust 1.99.0 (+ wasm32, cible `wasm32-wasip2`) · Node 24.15.0 · Python 3.14 · **clang/LLVM-MinGW 22.1.8** · GPU inutile (tranché) · Wasmer 7.5 = non fonctionnel ici (voir Exp 007).
 
 ## À faire ⏳ (suite recommandée, par ordre)
 
 1. **WASI réseau** : sockets (WASI 0.3) ; ~~WIT / composants~~ : **FAIT (Exp 018-019)** — reste `resource`/`variant`/`enum` et la composition d'instances.
 2. Client MCP tiers réel « inspector »/Claude Desktop (le filtrage policy est fait — Exp 015 ; le test actuel *est* déjà un client JSON-RPC externe spawn stdio) ; reste l'interconnexion avec un vrai client tiers.
-3. **Comparaison avec un cadre existant (Extism)** : même plugin sous Extism (manifeste + PDK) vs HOUETOR — répond à la lacune « aucune comparaison d'écosystème ».
+3. ~~Comparaison avec un cadre existant (Extism)~~ : **FAIT (Exp 021)**.
 4. Plafond **mémoire** (`-W max-memory-size`) + charge de fichiers WASI réelle ; portabilité macOS/navigateur.
 5. ~~Instruments de dépendances (WIT/composants)~~ : **FAIT (Exp 018)**. ~~Chargement distant / signature~~ : **FAIT (Exp 013-016)**. Éventuellement : hôte wasmtime en Rust.
 
 ## Point de reprise exact
 
-> Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012), **distribution ✅ registre/HTTP** (Exp 013), **Component Model ✅ testé** (Exp 018-019), **anti-DoS ✅ fuel/timeout** (Exp 020). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
-> Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, `~\.local\bin\wit-bindgen.exe`, `~\.local\bin\wasm-tools.exe`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
-> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 020**) → `conclusion.md`.
-> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `node prototype\mcp\policy_test.mjs` (9/9) + `node prototype\bench\component_test.mjs` (20/20) + `node prototype\bench\fuel_test.mjs` (12/12) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) + `node prototype\bench\sig_test.mjs` (12/12) (tout vert).
+> Les **4 phases + conclusion sont livrées**, portabilité **✅ multi-OS** (Exp 010), capabilities fichier **✅ lecture+écriture** (Exp 011-012), **distribution ✅ registre/HTTP** (Exp 013), **Component Model ✅ testé** (Exp 018-019), **anti-DoS ✅ fuel/timeout** (Exp 020), **comparaison d'écosystème ✅ Extism** (Exp 021). Reprendre une **suite** (étape 1 ci-dessus) ou une révision.
+> Vérifier l'outillage : `wasmtime --version ; cargo --version ; node --version` (**chemins absolus si shell ancien** : `%USERPROFILE%\.cargo\bin\cargo.exe`, `~\.local\bin\wasmtime-*`, `~\.local\bin\wit-bindgen.exe`, `~\.local\bin\wasm-tools.exe`, `~\.local\bin\extism\extism.exe`, wazero = `%TEMP%\opencode\wazero\wazero.exe`) ; WSL : runtimes dans `~/tools` (wasmtime linux + wazero tar.gz).
+> Reprendre le fil : `AGENTS.md` §3 → `ROADMAP.md` → `EXPERIMENTS_LOG.md` (dernier : **Exp 021**) → `conclusion.md`.
+> Recommandé avant toute reprise : `node prototype\mcp\test_bridge.mjs` (8/8) + `node prototype\mcp\policy_test.mjs` (9/9) + `node prototype\bench\component_test.mjs` (20/20) + `node prototype\bench\fuel_test.mjs` (12/12) + `node prototype\bench\extism_test.mjs` (11/11) + `$env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs` + `node prototype\bench\portability.mjs` + `powershell -File prototype\bench\portability_os.ps1` + `node prototype\bench\lifecycle.mjs` + `node prototype\bench\wasi_caps.mjs` + `node prototype\bench\wasi_write.mjs` + `node prototype\bench\registry_test.mjs` (15/15) + `node prototype\bench\sig_test.mjs` (12/12) (tout vert).
 
 ## Décisions de session
 
@@ -57,7 +58,7 @@
 
 ## Reste connu (mineur)
 
-- `prototype/plugins/hello/target/` : build résiduel (ignoré par git) ; idem `prototype/samples/{witcalc,spinhog}/target/` (compilation `wasm32-wasip2`).
-- `prototype/samples/{hello-v2,needy}/` : sources servant à `install` (needy : `-C link-arg=--allow-undefined` requis).
-- `needy` reste installé (utile pour retester la défense en profondeur ; retirer avec `host.mjs remove needy`) ; `witcalc` aussi (Exp 018, requis par `component_test.mjs`) ; `spinhog` = **retiré** par `fuel_test.mjs` (nettoyage).
+- `prototype/plugins/hello/target/` : build résiduel (ignoré par git) ; idem `prototype/samples/{witcalc,spinhog,extplug}/target/` (compilation `wasm32-wasip2` / `wasm32-unknown-unknown`).
+- `prototype/samples/{hello-v2,needy}/` : sources servant à `install` (needy : `-C link-arg=--allow-Undefined` requis).
+- `needy` reste installé (utile pour retester la défense en profondeur ; retirer avec `host.mjs remove needy`) ; `witcalc` aussi (Exp 018, requis par `component_test.mjs`) ; `spinhog` = **retiré** par `fuel_test.mjs` (nettoyage) ; `extplug` = échantillon PDK Extism (Exp 021, jamais installé dans HOUETOR — il est refusé de toute façon, c'est le test).
 - Bruit cosmétique Node/Windows : `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` en stderr lors de certains `die()` pendant une session HTTP (Exp 013-016) — code de sortie et messages d'erreur corrects, tous checks verts ; sans impact fonctionnel.

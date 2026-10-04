@@ -118,6 +118,23 @@ Durées (`timings_ms`) : install distante **224,2 ms** (v1) / **224,1 ms** (upda
 
 **Lecture** : l'isolation n'est plus seulement mémoire/capabilities mais aussi **temps CPU** — la lacune « pas de garde-fou DoS » est comblée côté composant. Limite : unités de fuel **non portables** d'une version de wasmtime à l'autre ; chemin module core non fuel-limable (refusé) ; **mémoire non plafonnée** (`-W max-memory-size` non câblé).
 
+## 3sexies. Comparaison avec un cadre existant — Extism (Exp 021)
+
+**Extism CLI 1.6.3** (sha256 zip vérifié, runtime wazero) + plugin maison `extplug` écrit avec le **PDK officiel** (`extism-pdk 1.4.1`) : on rejoue la thèse C (« le binaire est universel, le contrat ne l'est pas ») sur un tiers de référence. Sortie : `prototype/bench/extism_test.json` (**11/11**).
+
+| Axe | HOUETOR Plugin Host | Extism 1.6.3 | Preuve croisée |
+|---|---|---|---|
+| Contrat d'appel | module core ABI `nombre[]` **ou** composant WIT/WAVE | **ABI PDK Extism** uniquement (`extism:host/env`) | X2 : notre module → `expected 2 params, but passed 0` ; X3 : notre composant WIT → `invalid version header` |
+| Contrat d'appel — transparence du calcul | `add(2,3.5)` → **5.5** (module + composant + wasmtime + wazero + Node) | plugin PDK → **5.5** | **X4** : même valeur, contrats différents → la thèse C tient |
+| Manifeste | JSON : `permissions` ∩ `HOST_ALLOWED` + `sha256` + `manifest.sig` + `HOUETOR_PREOPENS` + `HOUETOR_FUEL/TIMEOUT` | JSON : `wasm` + `allowed_hosts` + `allowed_paths` + `timeout_ms` + `memory.max_pages` + `config` | X6/X7/X8 : manifeste Extism honoré (timeout, deny, grant) |
+| Imports hôtes inconnus | refus (`deny-by-default`, Exp 003/011) | refus (`module[env] not instantiated`) | **X5** : mêmes verdicts, mécanismes indépendants |
+| HTTP sortant | refusé (pas de capability réseau) | refusé sans `allowed_hosts` → accordé avec | **X7** `not allowed (recovered by wazero)` / **X8** `EXTISM-LOCAL-OK` |
+| Anti-DoS temps | `HOUETOR_TIMEOUT` → 500 ms ; `HOUETOR_FUEL` → 313 ms (Exp 020) | `timeout_ms=500` → coupé en 1 064 ms | **X6** : garde-fou des deux côtés, unités distinctes (ms vs fuel) |
+| Plafond mémoire | **non câblé** (reconnu, Exp 020) | `memory.max_pages` : refuse le chargement (X9) **mais laisse grandir 64 MiB sous 2 MiB** (X10) | nuance honnête : knob présent mais non bloquant côté croissance |
+| Distribution/provenance | sha256 épinglé + Ed25519 (Exp 014-016) | hors périmètre de ce test | — |
+
+**Lecture** : les deux cadres, écrits indépendamment, tombent sur les mêmes verdicts de sécurité (refus des imports inconnus, HTTP par défaut fermé, garde-fou temporel) mais **n'acceptent pas les mêmes binaires** : c'est la confirmation de la question C **sur un tiers**, pas seulement sur notre propre hôte. L'honnêteté inverse est notée : HOUETOR n'a **pas** de plafond mémoire quand Extism en expose un (même si, ici, il n'a pas bloqué la croissance).
+
 ## 4. Lecture par critère (étude §7)
 
 | Critère | Preuve mesurée | Verdict |
@@ -201,6 +218,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\samples\witcalc\b
 # 10. Isolation temporelle (Exp 020) : fuel/timeout, plugin malveillant → fuel_test.json (12/12, ~70 s)
 node "prototype\bench\fuel_test.mjs"
 powershell -NoProfile -ExecutionPolicy Bypass -File "prototype\samples\spinhog\build.ps1"
+
+# 11. Comparaison Extism (Exp 021) : PDK + manifeste tiers → extism_test.json (11/11)
+#    (prérequis une fois : installer github.com/extism/cli/releases/v1.6.3 → ~\.local\bin\extism\extism.exe)
+& "$env:USERPROFILE\.cargo\bin\cargo.exe" build --release --target wasm32-unknown-unknown --manifest-path prototype\samples\extplug\Cargo.toml
+Copy-Item "prototype\samples\extplug\target\wasm32-unknown-unknown\release\extplug.wasm" "prototype\samples\extplug\extplug.wasm" -Force
+node "prototype\bench\extism_test.mjs"
 ```
 
 Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K` ; limites d'exécution `HOUETOR_FUEL`, `HOUETOR_TIMEOUT` (Exp 020, à déconnecter après mesure) ; montage fs `HOUETOR_PREOPENS` (Exp 018). wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/` (avec `wit-bindgen` et `wasm-tools` au même endroit).

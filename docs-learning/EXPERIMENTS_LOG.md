@@ -644,3 +644,47 @@ RÃ©gressions aprÃ¨s changement : `test_bridge.mjs` **8/8**, `policy_test.mjs` **
 **Limite honnÃªte :** les unitÃ©s de fuel **ne sont pas comparables** d'une version de wasmtime Ã  l'autre (garde-fou, pas un budget portable) ; le chemin **module core in-process** ne peut pas Ãªtre fuel-limable â†’ il est *refusÃ©* sous limite (recommandation : composants pour le code non fiable) ; **mÃ©moire** non plafonnÃ©e (`-W max-memory-size` existe, non cÃ¢blÃ©) ; pas de limite sur `install`/`info`.
 
 **Suite :** plafond mÃ©moire (`max-memory-size`), WASI rÃ©seau, comparaison Extism, client MCP tiers.
+
+---
+
+## Exp 021 — Comparaison avec un cadre existant : Extism (2026-10-04)
+
+**Contexte :** dernière lacune d'audit non comblée : « aucune comparaison d'écosystème ». On ne compare pas des chiffres de perf, on teste la **thèse C** (« le binaire est universel, le contrat ne l'est pas ») sur un cadre tiers de référence : **Extism** (Dylibso, ~5,8k?, Phase 1 §2.1) — le framework de plugins WASM le plus utilisé hors proxy-wasm.
+
+**Action :**
+- **Extism CLI 1.6.3** installé localement (`~\.local\bin\extism\extism.exe`) depuis `github.com/extism/cli/releases` — **sha256 du zip vérifié** (`47e4ed2782445b2b08a4d1ac127211588f8b4d1fc25fd6481d4cb65151b5213c` == distante) ; runtime embarqué = **wazero** (la preuve sort de la trace d'erreur elle-même, cf. X7) ;
+- échantillon `prototype/samples/extplug` : plugin écrit avec le **PDK Rust officiel** (`extism-pdk 1.4.1`, macro `#[plugin_fn]`, `FnResult<String>`, `http::request(&HttpRequest, …)`) ? `wasm32-unknown-unknown` ? `extplug.wasm` (211 350 o) — 4 fonctions : `add`, `fetch` (HTTP), `spin` (boucle infinie), `hog` (allocation 64 Mo) ;
+- `prototype/bench/extism_test.mjs` (11 checks, spawn **asynchrone** + serveur HTTP local dans le même process — règle apprise au registre) ? `extism_test.json`.
+
+**Preuves brutes** (`prototype/bench/extism_test.json`, `all_checks_pass: true`, **11/11**) :
+
+```text
+PASS X1 extism --version — extism version 1.6.3
+PASS X2 module HOUETOR (ABI nombre[]) ? refus ABI Extism — Error: expected 2 params, but passed 0
+PASS X3 composant WIT ? refus (pas de Component Model dans ce CLI) — Error: invalid version header
+PASS X4 extplug (PDK Extism) add "2 3.5" ? "5.5" (même valeur que HOUETOR) — out="5.5" 692ms
+PASS X5 needy (env.host_log) ? « module[env] not instantiated » (deny Extism) — Error: module[env] not instantiated
+PASS X6 manifeste Extism timeout_ms=500 ? spin coupé « Error: timeout » en < 3 s — exit=1 1064ms
+PASS X7 manifeste allowed_hosts=[] ? HTTP refusé — Error: HTTP request to 'http://127.0.0.1:61555/probe' is not allowed (recovered by wazero)
+PASS X8 allowed_hosts=127.0.0.1 ? corps servi local reçu — out="EXTISM-LOCAL-OK"
+PASS X9 hog --memory-max 16 ? refus au chargement (min déclaré 17 pages) — Error: section memory: min 17 pages (1 Mi) over limit of 16 pages (1 Mi)
+PASS X10 hog --memory-max 32 (2 MiB) ? 64 MiB alloués quand même (nuance : limite non bloquante) — exit=0 out="67108864 octets touches"
+PASS X11 serveur fermé + plugins intacts — {"hello":true,"needy":true,"witcalc":true} staging=false
+```
+
+**Résultat :**
+- **la thèse C se rejoue côté Extism, dans les deux sens** :
+  - X2 : notre module `hello` (ABI maison `nombre[]`) est **refusé par Extism** (`expected 2 params, but passed 0`) — un même fichier wasm ne change pas d'ABI en changeant d'hôte ;
+  - X4 : le plugin PDK Extism renvoie **`5.5`**, exactement la valeur obtenue par HOUETOR (module, composant WIT, wasmtime CLI, wazero, Node) — le **calcul** passe, le **contrat** (qui appelle, avec quels noms de paramètres, sous quelle permission) ne passe pas ;
+  - X3 : le composant WIT `witcalc` est refusé par ce CLI (`invalid version header`) : Extism ici = **modules core uniquement**, alors que notre hôte les exécute nativement ;
+- **deny-by-default aussi chez l'autre** : X5 (`env.host_log` ? `module[env] not instantiated`) et X7 (`allowed_hosts: []` ? `not allowed`) — deux cadres indépendants, mêmes verdicts, mécanismes différents (notre : allow-list d'hôte + pré-ouverture explicite ; Extism : `allowed_hosts`/`allowed_paths` déclarés au manifeste) ;
+- **le « contrat » Extism est un objet JSON unique** (`wasm`, `allowed_hosts`, `allowed_paths`, `timeout_ms`, `memory.max_pages`, `config`) — structure analogue à notre manifeste maison (permissions n allow-list hôte), champs différents : ils ont `max_pages` + `config`, on a `sha256`/`manifest.sig` (Exp 014-016) + fuel (Exp 020) ;
+- **coupure temporelle comparable** (X6) : `timeout_ms=500` coupe `spin` en **1 064 ms** (notre Exp 020 : 500 ms au timeout, 313 ms au fuel) — les deux fixent un garde-fou, l'unité diffère (ms vs fuel) ;
+
+**Limite honnête :**
+- `--memory-max` (X9/X10) : le plafond **bloque au chargement** (min déclaré > limite) mais **n'a pas empêché la croissance** — 64 MiB alloués sous `--memory-max 32` (2 MiB) ? knob présent, non fiable ici ; nuance à garder en tête avant d'aller « admirer » les features des autres ;
+- comparaison **asymétrique volontaire** : on teste le CLI officiel, pas `extism-runtime` embarqué dans une vraie appli ni le runtime Go/Rust ; nos mesures de perf (§5-§8) **ne sont pas rejouées** sous Extism (hors périmètre : on compare les contrats, pas les nanosecondes) ;
+- `extism-pdk` n'offre ni WIT ni Component Model dans ce CLI (X3) ? le « binaire universel » n'est universel qu'au niveau **module core** ;
+- `extplug.wasm` (211 350 o) vs notre module `hello` (160 o) : le PDK + son allocateur pèsent 1 300× le plugin minimal — le poids vient du contrat, pas du calcul.
+
+**Suite :** plafond mémoire HOUETOR (`max-memory-size`), WASI réseau, client MCP tiers.

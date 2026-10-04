@@ -16,8 +16,8 @@ Sous-titre : **Interopérabilité, sécurité, portabilité et intégration avec
 | `AGENTS.md` | Mémoire d'entrée (ordre de lecture, règles, état) |
 | `docs-learning/ROADMAP.md` | Avancement des 4 phases |
 | `docs-learning/LEARNING_STATE.md` | État actuel + point de reprise |
-| `docs-learning/EXPERIMENTS_LOG.md` | Journal des expériences (preuves brutes, Exp 001→020) |
-| `prototype/` | **HOUETOR Plugin Host** : `host/host.mjs`, `plugins/` (modules + composants WIT), `samples/` (witcalc, spinhog), `bench/` (comparatif §8 + tests), `mcp/` (bridge + transcript) |
+| `docs-learning/EXPERIMENTS_LOG.md` | Journal des expériences (preuves brutes, Exp 001→021) |
+| `prototype/` | **HOUETOR Plugin Host** : `host/host.mjs`, `plugins/` (modules + composants WIT), `samples/` (witcalc, spinhog, extplug), `bench/` (comparatif §8 + tests), `mcp/` (bridge + transcript) |
 
 ## Phases
 
@@ -36,4 +36,5 @@ Sous-titre : **Interopérabilité, sécurité, portabilité et intégration avec
 - **Anti-DoS (Exp 020)** : `HOUETOR_FUEL`/`HOUETOR_TIMEOUT` coupent le plugin malveillant `spinhog` (boucle infinie) — **60,2 s de blocage sans limites → 313 ms (fuel) / 500 ms (timeout)**, appels légitimes intacts sous la même limite, configuration invalide = refus (fail-closed) — **12/12 checks**.
 - **Capabilities WASI (Exp 011-012)** : lecture/écriture dans le dossier accordé ✅, évasion `../` refusée ✅, aucun accord = refus ✅, preopen `ro` bloque l'écriture ✅ (wazero) — **21 checks sur wasmtime/wazero/node:wasi**, `evil.txt` jamais créé.
 - **Distribution + provenance (Exp 013-016)** : registre local (`registry`) + installation depuis **HTTP** (`install-url`) — découverte → téléchargement → validation → mise à jour versionnée, install **224 ms** ; **intégrité par épinglage sha256** (obligatoire à distance, altération post-install détectée) ; **provenance Ed25519** (`manifest.sig` + `HOUETOR_TRUST_KEYS`, install distant = sha256 + signature) — **15/15 + 12/12 checks** ; le standard de registre et une PKI d'ancre restent absents (lacune Q4 confirmée).
+- **Comparaison Extism (Exp 021)** : le cadre tiers **Extism 1.6.3** (CLI officiel + PDK Rust, runtime wazero) **refuse nos binaires** (module ABI maison → `expected 2 params`, composant WIT → `invalid version header`) et **nous refusons les siens** de la même façon (imports inconnus, HTTP sans `allowed_hosts`) — pourtant le plugin PDK renvoie **5.5**, la même valeur que partout ailleurs → **la thèse C est confirmée sur un tiers indépendant** : le calcul est universel, le contrat ne l'est pas — **11/11 checks** (`extism_test.json`).
 - **Hypothèse §9** : **confirmée côté technique, nuancée côté écosystème** → `conclusion.md` (chiffres : source de vérité = `phase3_measures.md` + JSON bruts ; ratio wasmtime/natif ≈ **×1,5 médiane, fourchette 0,6-1,9× = bruit de mesure**, pas un gain — Exp 009).

@@ -19,7 +19,7 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 2. `phase1_etat_de_l_art.md` — **fait** (2026-10-04)
 3. `docs-learning/ROADMAP.md` — avancement des 4 phases
 4. `docs-learning/LEARNING_STATE.md` — **état actuel + point de reprise**
-5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 020**)
+5. `docs-learning/EXPERIMENTS_LOG.md` — journal des expériences (dernier : **Exp 021**)
 6. `conclusion.md` — **réponses aux 8 questions finales §11 + verdict hypothèse §9**
 
 ## 3. État en bref (contrôle 2026-10-04, sessions 1+2 — fin de session)
@@ -31,8 +31,9 @@ On n'étudie PAS un logiciel existant choisi au hasard : on crée le nôtre et o
 - **Phase 4 (pont WASM × MCP) : POC FAIT** → `prototype/mcp/bridge.mjs` (test 8/8, Exp 005 ; `tools/list` généré auto depuis les manifestes ; **Exp 015 = filtrage policy allow/deny via `HOUETOR_MCP_POLICY`, fail-closed, 9/9** → `policy_test.json` ; **Exp 019 = outils typés pour composants : `inputSchema` à propriétés nommées issues du WIT `{a: number, b: number}`, `tools/call` nommé → positionnel + refus paramètre manquant — régressions 8/8 + 9/9**).
 - **Exp 018 (composants WIT)** : plugin `witcalc` (composant `houetor:calc/calc@0.1.0`, 94 668 o) — `host wit`/`host types` lisent **WIT + capabilities dans le binaire** (`wasm-tools component wit`), exécution **WAVE** (`add(2, 3.5)` → 5.5), refus de type/arité avant exécution, **deny-by-default statique fs** + double verrou `HOUETOR_PREOPENS` → **20/20** `prototype/bench/component_test.json`.
 - **Exp 020 (anti-DoS)** : `HOUETOR_FUEL`/`HOUETOR_TIMEOUT` → `-W fuel=`/`-W timeout=` — plugin malveillant `spinhog` (boucle infinie) : **60,2 s sans limites → coupé en 313 ms (fuel) / 500 ms (timeout)**, appels légitimes intacts sous la même limite, valeurs invalides = refus fail-closed → **12/12** `prototype/bench/fuel_test.json`.
+- **Exp 021 (comparaison Extism)** : **Extism CLI 1.6.3** officiel (sha256 zip vérifié, runtime wazero) + plugin maison `extplug` (PDK Rust) — nos binaires refusés par Extism (`expected 2 params` / `invalid version header`) et leurs imports refusés par nous ; plugin PDK → **5.5 = même valeur que partout** (thèse C confirmée sur un tiers) ; `timeout_ms`/`allowed_hosts` honorés, `memory.max_pages` non bloquant (64 MiB sous 2 MiB) → **11/11** `prototype/bench/extism_test.json`.
 - **Conclusion §11 : ÉCRITE** → `conclusion.md` (hypothèse §9 confirmée côté technique, nuancée côté écosystème).
-- **Outillage local (2026-10-04)** : wasmtime **49.0.2** (Windows + Linux/WSL2) · **wazero 1.12** (Exp 007/010, `%TEMP%\opencode\wazero\` + `~/tools` WSL) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · **WSL2 Ubuntu 26.04** (8 cœurs) · Rust **1.99.0** (+ wasm32, cible `wasm32-wasip2`) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · Wasmer 7.5 = non fonctionnel ici · **aucun GPU (inutile)** · **attention : shells persistants n'ont pas les PATH récents → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~\.local\bin\wasmtime-*`, `~\.local\bin\wit-bindgen.exe`, `~\.local\bin\wasm-tools.exe`)**.
+- **Outillage local (2026-10-04)** : wasmtime **49.0.2** (Windows + Linux/WSL2) · **wazero 1.12** (Exp 007/010, `%TEMP%\opencode\wazero\` + `~/tools` WSL) · **wit-bindgen 0.62.0** + **wasm-tools 1.261.0** (Exp 018, `~\.local\bin\`) · **Extism CLI 1.6.3** (Exp 021, `~\.local\bin\extism\extism.exe`) · **WSL2 Ubuntu 26.04** (8 cœurs) · Rust **1.99.0** (+ wasm32, cible `wasm32-wasip2`) · Node **v24.15.0** · Python **3.14** · **clang/LLVM-MinGW 22.1.8** · Docker ❌ · Wasmer 7.5 = non fonctionnel ici · **aucun GPU (inutile)** · **attention : shells persistants n'ont pas les PATH récents → chemins absolus (`%USERPROFILE%\.cargo\bin`, `~\.local\bin\wasmtime-*`, `~\.local\bin\wit-bindgen.exe`, `~\.local\bin\wasm-tools.exe`, `~\.local\bin\extism\extism.exe`)**.
 
 ## 4. Réponse rapide à la question « GPU en ligne ? »
 
@@ -100,10 +101,14 @@ node "prototype\mcp\policy_test.mjs"          # Exp 015 : filtrage policy (9/9) 
 # Tests des expériences récentes
 node "prototype\bench\component_test.mjs"     # Exp 018+019 : composant WIT + outils typés (20/20) → component_test.json
 node "prototype\bench\fuel_test.mjs"          # Exp 020 : fuel/timeout anti-DoS (12/12, ~70 s dont 60 s de « avant ») → fuel_test.json
+node "prototype\bench\extism_test.mjs"        # Exp 021 : comparaison Extism 1.6.3 (11/11) → extism_test.json
 
 # Rebuild d'un plugin (dossier du crate)
 cargo build --release --target wasm32-unknown-unknown
 Copy-Item "target\wasm32-unknown-unknown\release\hello.wasm" ".\hello.wasm" -Force
+# échantillon PDK Extism (Exp 021) :
+cargo build --release --target wasm32-unknown-unknown --manifest-path "prototype\samples\extplug\Cargo.toml"
+Copy-Item "prototype\samples\extplug\target\wasm32-unknown-unknown\release\extplug.wasm" "prototype\samples\extplug\extplug.wasm" -Force
 
 # Git (jamais de secrets, add ciblé)
 git add -- <fichiers>; git commit -m "..."; git push
