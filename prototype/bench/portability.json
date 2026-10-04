@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-04T10:28:03.293Z",
+  "date": "2026-10-04T11:16:08.446Z",
   "machine": "win32 x64 v24.15.0",
   "workload": "fib(45) x 10000000 appels (médiane de 5 exécutions), même binaire WASM",
   "expected_result": "1134903170",
@@ -13,8 +13,8 @@
       "n": 45,
       "status": "ok",
       "result": "1134903170",
-      "per_call_ns": 17.1,
-      "first_call_us": 7.9
+      "per_call_ns": 10,
+      "first_call_us": 5.7
     },
     {
       "id": "wasmtime-p1",
@@ -24,8 +24,8 @@
       "n": 45,
       "status": "ok",
       "result": "1134903170",
-      "per_call_ns": 21.7,
-      "first_call_us": 4.6
+      "per_call_ns": 12,
+      "first_call_us": 3.5
     },
     {
       "id": "wazero-p1",
@@ -35,8 +35,8 @@
       "n": 45,
       "status": "ok",
       "result": "1134903170",
-      "per_call_ns": 44,
-      "first_call_us": 2.2
+      "per_call_ns": 13.9,
+      "first_call_us": 0.6
     },
     {
       "id": "node-wasi-p1",
@@ -46,8 +46,8 @@
       "n": 45,
       "status": "ok",
       "result": "1134903170",
-      "per_call_ns": 52.6,
-      "first_call_us": 1.5
+      "per_call_ns": 23,
+      "first_call_us": 0.7
     }
   ]
 }

@@ -58,10 +58,10 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 
 | Runtime (même binaire WASM) — Windows | 1er appel (µs) | par appel (ns) | résultat |
 |---|---:|---:|---|
-| wasmtime 49 (Cranelift) — composant WASI **p2** | 7,9 | **17,1** | `1134903170` |
-| wasmtime 49 (Cranelift) — module WASI **p1** | 4,6 | 21,7 | `1134903170` |
-| wazero 1.12 (moteur **Go**) — module WASI p1 | 2,2 | 44,0 | `1134903170` |
-| node:wasi (moteur **V8**) — module WASI p1 | 1,5 | 52,6 | `1134903170` |
+| wasmtime 49 (Cranelift) — composant WASI **p2** | 5,7 | **10,0** | `1134903170` |
+| wasmtime 49 (Cranelift) — module WASI **p1** | 3,5 | 12,0 | `1134903170` |
+| wazero 1.12 (moteur **Go**) — module WASI p1 | 0,6 | 13,9 | `1134903170` |
+| node:wasi (moteur **V8**) — module WASI p1 | 0,7 | 23,0 | `1134903170` |
 
 `prototype/bench/portability_os.sh` via WSL2 (Linux Ubuntu 26.04, Exp 010) → `portability_os.json`, exit 0 :
 
@@ -82,7 +82,7 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 | **Mémoire (RSS pic)** | natif **3,8** · wasmtime **14,4** · wazero **16,1** · Python **16,3** · Node **40,5** · host WASM **41,4** MB | ✅ un runtime WASM dédié coûte **2,5-3× moins que Node**, stable entre moteurs ; le plugin = **1 Mo** de mémoire linéaire |
 | **Taille du plugin** | plugin réactif **160 o** (vs 88 064 o natif, 991 o js, 135 641 o commande WASI avec std Rust) | ✅ un *plugin* minimal = **160 o** ; le poids vient du runtime/std, pas du plugin |
 | **Isolation** | Exp 003/005 : imports refusés (`deny-by-default`), 2 barrières indépendantes | ✅ |
-| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) | ✅ |
+| **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) + **capabilities WASI** (Exp 011 : grant → `ok`, évasion `../` → refusée, aucun accord → refus, **9/9 sur 3 moteurs**) | ✅ (applicatif + système) |
 | **Temps d'installation / mise à jour** | Exp 008 : install **18,5 ms** fs net, update (v1→v2 + archivage) **24,7 ms**, remove **14,2 ms** (wall ≈ 90-100 ms avec spawn Node 73 ms) | ✅ local ≈ dizaines de ms |
 | **Retrait / versions / install** | Exp 003 (fonctionnel : `.history/`, refus doublon) + Exp 008 (chronométré) | ✅ |
 | **Portabilité** | même fichier exécuté sur **2 OS** (Windows, Linux/WSL2) par **7 combinaisons** exécuteur×OS — **3 moteurs** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat `1134903170` (Exp 007+010, `portability.json` + `portability_os.json`) | ✅ **multi-OS démontrée** (macOS/navigateur = suite) |
@@ -139,6 +139,10 @@ node prototype\bench\portability.mjs
 #     curl -sL https://github.com/bytecodealliance/wasmtime/releases/download/v49.0.2/wasmtime-v49.0.2-x86_64-linux.tar.xz | tar xJ
 #     curl -sL -o wazero.tar.gz https://github.com/tetratelabs/wazero/releases/download/v1.12.0/wazero_1.12.0_linux_amd64.tar.gz && tar xzf wazero.tar.gz && rm wazero.tar.gz && chmod +x wazero)
 powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\portability_os.ps1
+
+# 7. Capabilities fichier WASI (Exp 011) : grant/escape/nogrant × 3 runtimes → wasi_caps.json
+#    (module : cargo build --release --target wasm32-wasip1 --manifest-path prototype\samples\filecap\Cargo.toml)
+node prototype\bench\wasi_caps.mjs
 ```
 
 Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K`. wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/`.

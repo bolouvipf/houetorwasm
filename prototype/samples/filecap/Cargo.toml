@@ -1,0 +1,9 @@
+[package]
+name = "filecap"
+version = "1.0.1"
+edition = "2021"
+description = "Exp 011 : capabilities fichier WASI (deny-by-default, allow-list de chemins)"
+
+[[bin]]
+name = "filecap"
+path = "src/main.rs"

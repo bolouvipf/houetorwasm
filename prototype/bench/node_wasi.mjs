@@ -1,13 +1,18 @@
-// Exécuteur node:wasi (V8 + WASI preview1 intégré) pour l'Exp 007 (portabilité).
-// Usage: node --experimental-wasi-unstable-preview1 node_wasi.mjs <wasm> <k> <n> <label>
+// Exécuteur node:wasi (V8 + WASI preview1 intégré) — Exp 007/011.
+// Usage : node --experimental-wasi-unstable-preview1 node_wasi.mjs <wasm> [args...]
+//   args restants = argv du guest (ex. fib : k n label ; filecap : chemin cible).
+// Env optionnel : WASI_PREOPENS = JSON {"<guestPath>":"<hostPath>"} (capabilities).
 import fs from 'node:fs';
 import { WASI } from 'node:wasi';
 
-const [wasmPath, k, n, label] = process.argv.slice(2);
+const [wasmPath, ...guestArgs] = process.argv.slice(2);
+const preopens = process.env.WASI_PREOPENS ? JSON.parse(process.env.WASI_PREOPENS) : undefined;
+
 const wasi = new WASI({
   version: 'preview1',
-  args: ['fib', String(k ?? 100000), String(n ?? 45), label ?? 'node-wasi'],
+  args: ['wasm', ...guestArgs],
   returnOnExit: true,
+  ...(preopens ? { preopens } : {}),
 });
 const bytes = fs.readFileSync(wasmPath);
 const { instance } = await WebAssembly.instantiate(bytes, {

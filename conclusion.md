@@ -1,6 +1,6 @@
 # Conclusion — Réponses aux questions finales (étude §11)
 
-> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→010).
+> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→011).
 > Rappel de la règle du lab : **aucune réponse sans preuve brute datée** ; les chiffres renvoient aux fichiers de mesures.
 
 ## Verdict sur l'hypothèse (§9)
@@ -37,7 +37,7 @@
 Liste établie par preuves (Phase 1 §8 + Phase 2 synthèse) :
 1. **Contrat sémantique fragmenté** : ≥ 8 ABI/IDL hétérogènes (proxy-wasm, ROW_DIRECT, dlopen signé, NaN-boxing, WIT, WASI, host functions…).
 2. **Découverte/distribution** : aucun registre/manifeste standard (nous en avons inventé un en 40 lignes — preuve que le standard manque).
-3. **Permissions** : WASI = capabilities système, mais *pas* le modèle « plugin demande, hôte accorde » au niveau applicatif (notre `HOST_ALLOWED` est maison).
+3. **Permissions** : WASI fournit déjà les capabilities **système** — prouvées ici (Exp 011 : lecture seule dans le dossier accordé, évasion `../` refusée, aucun accord = refus, **9/9 sur 3 moteurs**) ; il manque le niveau **applicatif** standard (« plugin demande, hôte accorde ») : notre manifeste + `HOST_ALLOWED` est encore maison.
 4. **Maturité WASI/CM** : async livré 2026-06, threads absents, 1.0 pas encore là.
 5. **Adoption réelle** : 0,35 % des sites ; Docker Wasm abandonné 🔴 ; APISIX WASM gelé 🟡 ; runwasi encore non-core.
 6. **Éditeurs de plugins qui contournent WASM** (Chrome, VS Code) : le standard n'impose rien à personne.

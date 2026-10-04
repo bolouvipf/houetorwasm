@@ -323,4 +323,38 @@ checks: dup_refused=true update_ok=true remove_ok=true probe_gone=true hello_int
 
 ---
 
-## Exp 011 — *(à venir)*
+## Exp 011 — Capabilities fichier WASI : deny-by-default + escape bloqué (2026-10-04)
+
+**Contexte :** le hôte prouvait ses permissions *applicatives* (manifeste, Exp 003/005), mais pas les **capabilities système WASI** (§7 « contrôle des permissions », H §Phase 2) : que se passe-t-il réellement quand un plugin veut lire un fichier ?
+
+**Action :** module `prototype/samples/filecap` (Rust → `wasm32-wasip1`, 124 186 o) qui lit une cible passée en argument et imprime un JSON (len + somme octets = intégrité) ; script `prototype/bench/wasi_caps.mjs` : **3 scénarios × 3 runtimes** (wasmtime `--dir`, wazero `-mount`, node:wasi `preopens`), médiane de 3, cible d'évasion `data/../secret.txt` (secret hors du dossier accordé).
+
+**Preuves brutes** (`wasi_caps.json`, 9/9 `all_runtimes_agree: true`) :
+
+```text
+✅ wasmtime 49 (Cranelift) · grant → ok
+✅ wasmtime 49 (Cranelift) · escape → err (Operation not permitted (os error 63))
+✅ wasmtime 49 (Cranelift) · nogrant → err (No such file or directory (os error 44))
+✅ wazero 1.12 (moteur Go) · grant → ok
+✅ wazero 1.12 (moteur Go) · escape → err (Operation not permitted (os error 63))
+✅ wazero 1.12 (moteur Go) · nogrant → err (No such file or directory (os error 44))
+✅ node:wasi (V8) · grant → ok
+✅ node:wasi (V8) · escape → err (No such file or directory (os error 44))
+✅ node:wasi (V8) · nogrant → err (No such file or directory (os error 44))
+```
+
+Contenu lu sous grant : `len=16, byte_sum=1157` — **identique sur les 3 runtimes** (intégrité vérifiée).
+
+**Résultat :** les 3 moteurs implémentent la même sémantique de capabilities :
+1. **Rien accordé → rien lisible** (deny-by-default au niveau runtime, indépendant de notre hôte) ;
+2. **Accord = chemin exact** : la tentative d'évasion `data/../secret.txt` est **refusée** (`Operation not permitted`) par Cranelift **et** Go **et** V8 ;
+3. **Semantique portable** : mêmes statuts `ok/err/err` sur 3 moteurs → le modèle « l'hôte accorde des dossiers, le plugin ne voit que cela » est fiable quel que soit le runtime.
+*Note de terrain* : wazero documente lui-même que des mounts de volume entiers (ex. `-mount=/`) permettent la fuite via `../../` → **c'est la granularité du preopen qui protège**, pas le moteur (argument pour des allow-lists fines).
+
+**Bug corrigé en cours d'Exp :** le pilote ne fusionnait pas `rt.env` (`WASI_PREOPENS`) → faux négatif node:wasi en grant ; corrigé, 9/9.
+
+**Suite :** capacités réseau (WASI sockets), écriture (ro/rw), WIT pour politiques fines côté plugin.
+
+---
+
+## Exp 012 — *(à venir)*

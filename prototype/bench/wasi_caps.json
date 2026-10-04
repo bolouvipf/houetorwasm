@@ -1,0 +1,180 @@
+{
+  "date": "2026-10-04T11:15:29.230Z",
+  "machine": "win32 x64 v24.15.0",
+  "module": "filecap.wasm (wasm32-wasip1)",
+  "targets": {
+    "grant": "data/input.txt",
+    "escape": "data/../secret.txt",
+    "nogrant": "data/input.txt"
+  },
+  "checks": [
+    {
+      "id": "wasmtime/grant",
+      "pass": true,
+      "got": "ok",
+      "expect": "ok"
+    },
+    {
+      "id": "wasmtime/escape",
+      "pass": true,
+      "got": "err",
+      "expect": "err"
+    },
+    {
+      "id": "wasmtime/nogrant",
+      "pass": true,
+      "got": "err",
+      "expect": "err"
+    },
+    {
+      "id": "wazero/grant",
+      "pass": true,
+      "got": "ok",
+      "expect": "ok"
+    },
+    {
+      "id": "wazero/escape",
+      "pass": true,
+      "got": "err",
+      "expect": "err"
+    },
+    {
+      "id": "wazero/nogrant",
+      "pass": true,
+      "got": "err",
+      "expect": "err"
+    },
+    {
+      "id": "node-wasi/grant",
+      "pass": true,
+      "got": "ok",
+      "expect": "ok"
+    },
+    {
+      "id": "node-wasi/escape",
+      "pass": true,
+      "got": "err",
+      "expect": "err"
+    },
+    {
+      "id": "node-wasi/nogrant",
+      "pass": true,
+      "got": "err",
+      "expect": "err"
+    }
+  ],
+  "results": [
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "grant",
+      "status": "ok",
+      "expect": "ok",
+      "impl": "filecap",
+      "target": "data/input.txt",
+      "len": 16,
+      "byte_sum": 1157,
+      "elapsed_us": 872.9,
+      "runs": 3
+    },
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "escape",
+      "status": "err",
+      "expect": "err",
+      "impl": "filecap",
+      "target": "data/../secret.txt",
+      "error": "Operation not permitted (os error 63)",
+      "elapsed_us": 239.3,
+      "runs": 3
+    },
+    {
+      "runtime": "wasmtime",
+      "label": "wasmtime 49 (Cranelift)",
+      "scenario": "nogrant",
+      "status": "err",
+      "expect": "err",
+      "impl": "filecap",
+      "target": "data/input.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 87,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "grant",
+      "status": "ok",
+      "expect": "ok",
+      "impl": "filecap",
+      "target": "data/input.txt",
+      "len": 16,
+      "byte_sum": 1157,
+      "elapsed_us": 384.3,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "escape",
+      "status": "err",
+      "expect": "err",
+      "impl": "filecap",
+      "target": "data/../secret.txt",
+      "error": "Operation not permitted (os error 63)",
+      "elapsed_us": 162.5,
+      "runs": 3
+    },
+    {
+      "runtime": "wazero",
+      "label": "wazero 1.12 (moteur Go)",
+      "scenario": "nogrant",
+      "status": "err",
+      "expect": "err",
+      "impl": "filecap",
+      "target": "data/input.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 11,
+      "runs": 3
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "grant",
+      "status": "ok",
+      "expect": "ok",
+      "impl": "filecap",
+      "target": "data/input.txt",
+      "len": 16,
+      "byte_sum": 1157,
+      "elapsed_us": 839.1,
+      "runs": 3
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "escape",
+      "status": "err",
+      "expect": "err",
+      "impl": "filecap",
+      "target": "data/../secret.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 641.7,
+      "runs": 3
+    },
+    {
+      "runtime": "node-wasi",
+      "label": "node:wasi (V8)",
+      "scenario": "nogrant",
+      "status": "err",
+      "expect": "err",
+      "impl": "filecap",
+      "target": "data/input.txt",
+      "error": "No such file or directory (os error 44)",
+      "elapsed_us": 709.1,
+      "runs": 3
+    }
+  ],
+  "all_runtimes_agree": true
+}
