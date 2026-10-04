@@ -52,18 +52,26 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 
 (Chaque run a exécuté le workload complet — aucun message d'erreur en sortie, vérifié. Variabilité inter-campagnes ≈ ±10 % : cf. limites §6.)
 
-## 3bis. Résultats bruts — portabilité : même binaire, plusieurs runtimes (Exp 007)
+## 3bis. Résultats bruts — portabilité : même binaire, plusieurs runtimes + plusieurs OS (Exp 007 + 010)
 
-`prototype/bench/portability.mjs` (médiane de 5, K = 10 M, contrôle strict `result == 1134903170`) → `portability.json`, `all_runtimes_agree: true` :
+`prototype/bench/portability.mjs` (Windows, médiane de 5, K = 10 M) → `portability.json`, `all_runtimes_agree: true` :
 
-| Runtime (même binaire WASM) | 1er appel (µs) | par appel (ns) | résultat |
+| Runtime (même binaire WASM) — Windows | 1er appel (µs) | par appel (ns) | résultat |
 |---|---:|---:|---|
 | wasmtime 49 (Cranelift) — composant WASI **p2** | 7,9 | **17,1** | `1134903170` |
 | wasmtime 49 (Cranelift) — module WASI **p1** | 4,6 | 21,7 | `1134903170` |
 | wazero 1.12 (moteur **Go**) — module WASI p1 | 2,2 | 44,0 | `1134903170` |
 | node:wasi (moteur **V8**) — module WASI p1 | 1,5 | 52,6 | `1134903170` |
 
-**1 fichier → 4 exécuteurs, 3 moteurs indépendants (Cranelift, Go, V8), 2 formats (p1 module / p2 composant), 1 résultat identique.** Écart max entre moteurs ≤ 3× (17,1 → 52,6 ns).
+`prototype/bench/portability_os.sh` via WSL2 (Linux Ubuntu 26.04, Exp 010) → `portability_os.json`, exit 0 :
+
+| Runtime — **Linux x86_64** (même fichier `/mnt/c/...`) | par appel (ns) | résultat |
+|---|---:|---|
+| wasmtime 49 (Cranelift) — module WASI p1 | 11,7 | `1134903170` |
+| wazero 1.12 (moteur Go) — module WASI p1 | 14,1 | `1134903170` |
+| node:wasi (V8) — module WASI p1 | 24,0 | `1134903170` |
+
+**1 fichier → 2 OS (Windows + Linux) · 3 moteurs indépendants (Cranelift, Go, V8) · 2 formats (p1/p2) · 7 combinaisons, 1 résultat identique.**
 
 ## 4. Lecture par critère (étude §7)
 
@@ -77,7 +85,7 @@ WASM commande (wazero)       : 16 100 KB (samples: 16100, 16092, 16072)
 | **Contrôle des permissions** | manifeste ∩ allow-list hôte (`HOST_ALLOWED = []`) | ✅ |
 | **Temps d'installation / mise à jour** | Exp 008 : install **18,5 ms** fs net, update (v1→v2 + archivage) **24,7 ms**, remove **14,2 ms** (wall ≈ 90-100 ms avec spawn Node 73 ms) | ✅ local ≈ dizaines de ms |
 | **Retrait / versions / install** | Exp 003 (fonctionnel : `.history/`, refus doublon) + Exp 008 (chronométré) | ✅ |
-| **Portabilité** | même fichier exécuté par **4 exécuteurs / 3 moteurs** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat `1134903170` (Exp 007, `portability.json`) | ✅ **démontrée** (3ᵉ runtime/OS de la suite) |
+| **Portabilité** | même fichier exécuté sur **2 OS** (Windows, Linux/WSL2) par **7 combinaisons** exécuteur×OS — **3 moteurs** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat `1134903170` (Exp 007+010, `portability.json` + `portability_os.json`) | ✅ **multi-OS démontrée** (macOS/navigateur = suite) |
 | **Complexité d'intégration** | hôte ≈ 250 lignes JS, 0 dépendance ; bridge MCP ≈ 150 lignes, 0 dépendance | ✅ faible |
 | **Gestion des dépendances** | imports refusés sauf permissions explicites ; WIT/composants = suite | 🟡 |
 
@@ -122,8 +130,15 @@ $env:BENCH_RUNS="9"; node prototype\bench\run_bench.mjs
 # 4. RSS pic (médiane de 3, polling externe) → peak_rss.json
 powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\peak_rss.ps1
 
-# 5. Portabilité : même binaire, 4 exécuteurs → portability.json
+# 5. Portabilité : même binaire, 4 exécuteurs (Windows) → portability.json
 node prototype\bench\portability.mjs
+
+# 6. Portabilité MULTI-OS : même binaire sous WSL2/Ubuntu → portability_os.json
+#    (prérequis Linux — une fois — dans WSL :
+#     mkdir -p ~/tools && cd ~/tools
+#     curl -sL https://github.com/bytecodealliance/wasmtime/releases/download/v49.0.2/wasmtime-v49.0.2-x86_64-linux.tar.xz | tar xJ
+#     curl -sL -o wazero.tar.gz https://github.com/tetratelabs/wazero/releases/download/v1.12.0/wazero_1.12.0_linux_amd64.tar.gz && tar xzf wazero.tar.gz && rm wazero.tar.gz && chmod +x wazero)
+powershell -NoProfile -ExecutionPolicy Bypass -File prototype\bench\portability_os.ps1
 ```
 
 Env : `BENCH_RUNS`, `BENCH_N`, `BENCH_K`. wasmtime résolu automatiquement depuis `~/.local/bin/wasmtime-*/`.

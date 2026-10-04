@@ -12,9 +12,9 @@
 
 ## État Phase 3 (détail)
 
-**Fait :** découverte, validation manifeste, chargement (compile+instantiate mesurés), **deny-by-default**, appels mesurés, retrait, installation versionnée (`.history/`), mise à jour sans toucher au host, refus de version dupliquée, **comparatif §8 à 5 jambes** (Exp 006+009 : campagne canonique natif 7,2 · wasmtime 13,9 · WASM-Node 24,5 · JS 34,3 · Python 1 594 ns/appel ; **ratios stables sur 5 campagnes** : wasmtime ≈ natif ×1,5 [0,6-1,9], host 1,4-2,2× JS, Python 65-238×) + **RSS pic externe** (`peak_rss.ps1` : wasmtime 14,4 Mo / wazero 16,1 Mo vs Node 40,5 Mo) + **portabilité** (Exp 007 : même binaire, 4 exécuteurs, 3 moteurs, résultat identique) + **cycle de vie chronométré** (Exp 008 : install 18,5 ms · update 24,7 ms · remove 14,2 ms fs net).
+**Fait :** découverte, validation manifeste, chargement (compile+instantiate mesurés), **deny-by-default**, appels mesurés, retrait, installation versionnée (`.history/`), mise à jour sans toucher au host, refus de version dupliquée, **comparatif §8 à 5 jambes** (Exp 006+009 : campagne canonique natif 7,2 · wasmtime 13,9 · WASM-Node 24,5 · JS 34,3 · Python 1 594 ns/appel ; **ratios stables sur 5 campagnes** : wasmtime ≈ natif ×1,5 [0,6-1,9], host 1,4-2,2× JS, Python 65-238×) + **RSS pic externe** (`peak_rss.ps1` : wasmtime 14,4 Mo / wazero 16,1 Mo vs Node 40,5 Mo) + **portabilité multi-OS** (Exp 007+010 : même binaire, 2 OS, 4 exécuteurs, 3 moteurs, résultat identique) + **cycle de vie chronométré** (Exp 008 : install 18,5 ms · update 24,7 ms · remove 14,2 ms fs net) + **stabilité du banc** (Exp 009 : ratios stables, fourchettes publiées).
 
-**Reste (suite, non bloquant) :** WASI 0.2 réel (capabilities fichier/réseau), WIT (chaînes/structs), signature/provenance des plugins, portabilité hors Windows (Linux/nappe/navigateur), chargement distant (réseau/registre).
+**Reste (suite, non bloquant) :** WASI 0.2 réel (capabilities fichier/réseau), WIT (chaînes/structs), signature/provenance des plugins, portabilité macOS/navigateur, chargement distant (réseau/registre).
 
 ## État Phase 4 (détail)
 
@@ -33,7 +33,7 @@
 | Niveau de contrôle des permissions | ✅ | Exp 003 (manifeste ∩ allow-list hôte) |
 | Temps d'installation | 🟡 | non chronométré (fs local, ms) — à instrumenter |
 | Temps de mise à jour | 🟡 | idem |
-| Portabilité | ✅ | même fichier → **4 exécuteurs, 3 moteurs indépendants** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat (Exp 007, `portability.json`) ; hors Windows = suite |
+| Portabilité | ✅ | même fichier → **2 OS (Windows + Linux/WSL2), 7 combinaisons** exécuteur×OS, **3 moteurs indépendants** (wasmtime-Cranelift p1+p2, wazero-Go, node:wasi-V8), même résultat (Exp 007+010 : `portability.json` + `portability_os.json`) ; macOS/navigateur = suite |
 | Complexité d'intégration | ✅ | hôte ≈ 250 lignes JS, 0 dépendance ; bridge ≈ 150 lignes, 0 dépendance |
 | Facilité de retrait | ✅ | Exp 003 (`remove`) |
 | Gestion des versions | ✅ | Exp 003 (`.history/`, refus doublon) |
@@ -54,4 +54,4 @@
 ## Blocages actuels
 
 - Aucun bloquant : outillage complet (Rust, wasmtime, Node, clang-MinGW, Python), 4 phases + conclusion livrées.
-- Suites ouvertes (non bloquantes) : portabilité hors Windows, WIT/Component Model, client MCP externe, instrumenter install/update, workload non compute-bound.
+- Suites ouvertes (non bloquantes) : portabilité macOS/navigateur, WIT/Component Model, client MCP externe (inspector), workload non compute-bound.

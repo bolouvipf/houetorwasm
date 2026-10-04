@@ -1,6 +1,6 @@
 # Conclusion — Réponses aux questions finales (étude §11)
 
-> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→008).
+> Date : **2026-10-04** · Base de preuves : `phase1_etat_de_l_art.md` · `phase2_cartographie.md` · `phase3_measures.md` · `phase4_mcp_bridge.md` · `docs-learning/EXPERIMENTS_LOG.md` (Exp 001→010).
 > Rappel de la règle du lab : **aucune réponse sans preuve brute datée** ; les chiffres renvoient aux fichiers de mesures.
 
 ## Verdict sur l'hypothèse (§9)
@@ -9,7 +9,7 @@
 
 **CONFIRMÉE POUR LA PARTIE TECHNIQUE, NUANCÉE POUR LA PARTIE ÉCOSYSTÉMIQUE.**
 
-- ✅ **Technique** : notre hôte (250 lignes, 0 dépendance) fait tout le cycle de vie §4, avec sandbox deny-by-default, mesures au 1/10 000ᵉ de µs, exécution **≈ 1,5× du natif** sous wasmtime (médiane de 5 campagnes, fourchette 0,6-1,9× — Exp 006+009), cycle de vie chronométré 14-25 ms (Exp 008), et **portabilité prouvée : un même binaire, 4 exécuteurs, 3 moteurs indépendants, un résultat identique** (Exp 007).
+- ✅ **Technique** : notre hôte (250 lignes, 0 dépendance) fait tout le cycle de vie §4, avec sandbox deny-by-default, mesures au 1/10 000ᵉ de µs, exécution **≈ 1,5× du natif** sous wasmtime (médiane de 5 campagnes, fourchette 0,6-1,9× — Exp 006+009), cycle de vie chronométré 14-25 ms (Exp 008), et **portabilité prouvée de bout en bout : un même binaire sur 2 OS (Windows + Linux), 4 exécuteurs, 3 moteurs indépendants, 7 combinaisons, un résultat identique** (Exp 007+010).
 - ⚠️ **Écosystémique** : aucun des 5 problèmes listés n'est résolu *par WASM lui-même* — nous les avons contournés avec un manifeste maison (interfaces/permissions/découverte) et ils restent ouverts à l'échelle du marché (distribution, compatibilité : Phase 2 montre **8 contrats hétérogènes** et des éditeurs majeurs qui n'utilisent pas WASM pour leurs plugins).
 - **Ce qu'il manque n'est pas du runtime mais du standard sémantique** → exactement le rôle assigné au Component Model/WASI (0.2 en 2024, 0.3 le 2026-06-11, 1.0 attendu fin 2026/début 2027).
 
@@ -55,7 +55,7 @@ Liste établie par preuves (Phase 1 §8 + Phase 2 synthèse) :
 | Artefact | 88 064 o | 1 735 o | 991 o | **160 o** | WASM vainqueur |
 | RSS pic | **3,8 Mo** | 16,3 Mo | 40,5 Mo | **14,4 Mo** (wasmtime) / 16,1 (wazero) | runtime dédié raisonnable |
 | Cycle de vie install/update/remove | réinstallation | réinstallation | — | **14-25 ms** fs net (Exp 008) | WASM OK |
-| Portabilité | ❌ par cible | 🟡 runtime | 🟡 runtime | ✅ **même binaire : 4 exécuteurs / 3 moteurs** (Cranelift, Go, V8), même résultat (Exp 007) | WASM vainqueur |
+| Portabilité | ❌ par cible | 🟡 runtime | 🟡 runtime | ✅ **même binaire : 2 OS (Windows+Linux), 4 exécuteurs, 3 moteurs**, même résultat (Exp 007+010) | WASM vainqueur |
 | Isolation | ❌ | ❌ | ❌ | ✅ sandbox | WASM vainqueur |
 | Limites | — | lenteur ×120-290 | aucune sandbox | surcoût runtime (14-41 Mo), types faibles, WASI en devenir | |
 

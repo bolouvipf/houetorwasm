@@ -1,0 +1,12 @@
+﻿{
+    "date":  "2026-10-04T11:04:09.5828100Z",
+    "lines":  [
+                  "{\"os\":\"Linux 6.18.33.1-microsoft-standard-WSL2 x86_64\",\"kernel\":\"6.18.33.1-microsoft-standard-WSL2\",\"cores\":8,\"k\":10000000,\"n\":45,\"runs\":5}",
+                  "{\"label\":\"wasmtime (Cranelift) ÔÇö Linux x86_64, module WASI p1\",\"per_call_ns\":11.7,\"runs\":5,\"k\":10000000,\"n\":45,\"result\":\"1134903170\"}",
+                  "{\"label\":\"wazero (moteur Go) ÔÇö Linux x86_64, module WASI p1\",\"per_call_ns\":14.1,\"runs\":5,\"k\":10000000,\"n\":45,\"result\":\"1134903170\"}",
+                  "{\"label\":\"node:wasi (V8) ÔÇö Linux, module WASI p1\",\"per_call_ns\":24.0,\"runs\":5,\"k\":10000000,\"n\":45,\"result\":\"1134903170\"}",
+                  "{\"all_runtimes_agree\":true}"
+              ],
+    "driver":  "portability_os.ps1 (Windows -\u003e WSL2 Ubuntu)",
+    "exit":  0
+}

@@ -299,4 +299,28 @@ checks: dup_refused=true update_ok=true remove_ok=true probe_gone=true hello_int
 
 ---
 
-## Exp 010 — *(à venir)*
+## Exp 010 — Portabilité MULTI-OS : Windows + Linux, même binaire (2026-10-04)
+
+**Contexte :** Exp 007 avait prouvé la portabilité *moteurs* sur Windows uniquement — restait le critère « même artefact sur un autre OS ».
+
+**Action :** environnement **WSL2 Ubuntu 26.04** (8 cœurs, x86_64) outillé avec les **mêmes runtimes côté Linux** (`~/tools` : wasmtime 49.0.2 linux-x86_64, wazero 1.12.0 linux-amd64 — *note : l'asset Linux de wazero est `.tar.gz`, `.zip` = « Not Found »*) ; script `prototype/bench/portability_os.sh` (médiane de 5/jambe, contrôle `result == 1134903170`) + pilote Windows `portability_os.ps1` (chemin `C:\…` → `/mnt/c/…`).
+
+**Preuves brutes** (`portability_os.json`, exit=0) :
+
+```text
+{"os":"Linux 6.18.33.1-microsoft-standard-WSL2 x86_64","kernel":"6.18.33.1-microsoft-standard-WSL2","cores":8,"k":10000000,"n":45,"runs":5}
+{"label":"wasmtime (Cranelift) — Linux x86_64, module WASI p1","per_call_ns":11.7,"runs":5,"k":10000000,"n":45,"result":"1134903170"}
+{"label":"wazero (moteur Go) — Linux x86_64, module WASI p1","per_call_ns":14.1,"runs":5,"k":10000000,"n":45,"result":"1134903170"}
+{"label":"node:wasi (V8) — Linux, module WASI p1","per_call_ns":24.0,"runs":5,"k":10000000,"n":45,"result":"1134903170"}
+{"all_runtimes_agree":true}
+```
+
+**Bilan portabilité cumulé (Exp 007 + 010)** : **1 fichier** (`fib-wasi.wasm`) → **2 OS** (Windows 11/NT + Linux WSL2/Ubuntu 26.04) · **3 moteurs** (Cranelift, Go, V8) · **2 formats** (p1/p2) · **7 combinaisons exécuteur×OS**, **toutes à `1134903170`** ; perf Linux 11,7-24,0 ns = mêmes ordres de grandeur que Windows (9,5-52,6 ns).
+
+**Résultat :** critère **portabilité ✅ multi-OS** ; « la même charge marche partout » est désormais démontré de bout en bout (binaire copié sur un second OS, exécuté par 3 moteurs différents, résultat identique).
+
+**Suite :** macOS/ARM (croisé), navigateur (WebAssembly DOM), charge de fichiers WASI (lecture/écriture réelle côté OS).
+
+---
+
+## Exp 011 — *(à venir)*
